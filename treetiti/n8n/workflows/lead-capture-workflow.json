@@ -1,0 +1,53 @@
+{
+  "name": "Lead Capture & Enrichment",
+  "nodes": [
+    {
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "parameters": {
+        "path": "lead-capture",
+        "options": {}
+      }
+    },
+    {
+      "name": "AI Classifier",
+      "type": "n8n-nodes-langchain.llm",
+      "position": [450, 300],
+      "parameters": {
+        "prompt": "Extract lead info from: {{$json.message}}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Supabase Insert",
+      "type": "n8n-nodes-base.supabase",
+      "position": [650, 300],
+      "parameters": {
+        "tableId": "leads",
+        "operation": "insert",
+        "data": {
+          "first_name": "={{$json.first_name}}",
+          "last_name": "={{$json.last_name}}",
+          "phone": "={{$json.phone}}",
+          "source_channel": "={{$json.channel}}"
+        }
+      }
+    },
+    {
+      "name": "Notification",
+      "type": "n8n-nodes-base.telegram",
+      "operation": "sendMessage",
+      "position": [850, 300],
+      "parameters": {
+        "chatId": "={{$json.consultant_chat_id}}",
+        "text": "New lead: {{$json.first_name}} - Score: {{$json.score}}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "AI Classifier", "type": "main" }]] },
+    "AI Classifier": { "main": [[{ "node": "Supabase Insert", "type": "main" }]] },
+    "Supabase Insert": { "main": [[{ "node": "Notification", "type": "main" }]] }
+  }
+}

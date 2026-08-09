@@ -1,0 +1,35 @@
+{
+  "name": "Content Approval Email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "treetiti-approval",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook",
+      "name": "Approval Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/webhooks/notify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subject\": \"[TREEtiti] Content awaiting approval — {{ $json.title }}\",\n  \"title\": \"Content awaiting your approval\",\n  \"rows\": [\n    [\"Title\", \"{{ $json.title }}\"],\n    [\"Platform\", \"{{ $json.platform }}\"],\n    [\"Body\", \"{{ $json.body }}\"],\n    [\"CTA\", \"{{ $json.cta }}\"],\n    [\"Review in dashboard\", \"{{ $json.dashboard_url || 'http://localhost:3000/content' }}\"]\n  ]\n}"
+      },
+      "id": "email",
+      "name": "Email Approval Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 0]
+    }
+  ],
+  "connections": {
+    "Approval Request": { "main": [[{ "node": "Email Approval Request", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
