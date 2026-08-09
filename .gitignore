@@ -40,3 +40,6 @@ logs/
 
 # ===== Misc =====
 .vite/
+
+# ===== Kimi bridge automation =====
+.kimi-bridge-state
