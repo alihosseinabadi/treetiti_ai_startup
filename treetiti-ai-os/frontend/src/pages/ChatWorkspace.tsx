@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useChat } from "../hooks/useChat";
 import { AppShell } from "../components/shell/AppShell";
@@ -21,17 +21,23 @@ export function ChatWorkspace({
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // Honor ?s=<sessionId> (e.g. from a project page) once on mount.
+  // Honor ?s=<sessionId> (e.g. from a project page) once on mount, and
+  // re-delegate when the ?agent= param changes (roster clicks while staying
+  // on the same route).
+  const agentParam = params.get("agent");
+  const sessionParam = params.get("s");
+  const usedAgentParam = useRef(agentParam);
   useEffect(() => {
-    const s = params.get("s");
+    const s = sessionParam;
     if (s) chat.loadSession(s);
     const agent = params.get("agent");
-    if (agent && !s) {
+    if (agent && !s && usedAgentParam.current !== agent) {
       const q = params.get("q") ?? "";
       setTimeout(() => void chat.send(`/agent ${agent}${q ? ` ${q}` : ""}`), 350);
     }
+    usedAgentParam.current = agent;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [agentParam, sessionParam, chat.newChat]);
 
   // Global ⌘K handler
   useEffect(() => {
