@@ -23,6 +23,10 @@ def main() -> None:
         ("google/gemini-3.6-flash", settings.google_ai_studio_key, "AI Studio"),
         ("deepinfra/deepseek-ai/DeepSeek-V3", settings.deepinfra_key, "flagship DI"),
         ("openrouter/deepseek/deepseek-v4-flash", settings.openrouter_key, "OR (WAF?)"),
+        ("ghm/gpt-4.1-mini", settings.github_models_key, "GitHub Models free"),
+        ("nim/meta/llama-3.3-70b-instruct", settings.nim_key, "NVIDIA NIM free"),
+        ("glm/glm-4-flash", settings.zai_key, "Z.ai GLM free"),
+        ("cf/@cf/meta/llama-3.1-8b-instruct", settings.cf_key, "Cloudflare free"),
     ]
     print(f"{'MODEL':<60} {'STATUS':<12} {'LATENCY':<10} NOTE")
     print("-" * 110)
