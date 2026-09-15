@@ -113,28 +113,31 @@ class Settings(BaseSettings):
         "qa": "auto/best-free",
     }
 
-    # Free-model chain (strongest -> weakest, verified-live first).
+    # Free-model chain (strongest -> weakest).
     #
-    # IMPORTANT: Groq's compound model (groq/compound = llama-4-scout +
-    # gpt-oss-120b) is the only VERIFIED-LIVE endpoint: HTTP 200 in ~1.4s.
-    # Agnes "agnes-2.5-pro" is a reasoning model but the account is currently
-    # OUT OF QUOTA (403 insufficient_user_quota). The 9Router/OmniRoute gateway
-    # slugs used to lead, but when its upstreams are unhealthy it answers every
-    # call with 502 + per-upstream error list, burning the chain budget before
-    # any working provider is reached. Gateway slugs stay as fallbacks.
+    # ORDER IS EVIDENCE-BASED - re-probed live 2026-09-15 from this machine:
+    #   router/auto/best-*   OK    ~7.7s  <- the only working path (1M ctx, tools)
+    #   groq/groq/compound   FAIL  403 Forbidden
+    #   agnes/agnes-2.5-pro  FAIL  403 out of quota (remaining $0.0007)
+    #   google/...           FAIL  400 User location is not supported
+    #   openrouter/...       FAIL  403 Access denied by security policy
+    #   deepinfra/...        FAIL  402 no balance
+    #   ollama               FAIL  connection refused (server not running)
+    #   opencode CLI         NOT INSTALLED on PATH
+    #
+    # The local 9Router gateway therefore leads the chain; the cloud providers
+    # that used to lead it now answer 403/402/400 and are kept only as late
+    # fallbacks for when keys/region/balance change.
+    # Re-probe anytime:  .venv/bin/python app/healthcheck_providers.py
     free_model_chain: list[str] = [
-        "groq/groq/compound",          # Groq Compound direct API — VERIFIED LIVE (~1.4s)
-        "agnes/agnes-2.5-pro",         # Agnes hub direct (reasoning, quota exhausted 2026-09)
-        "ghm/gpt-4.1-mini",            # GitHub Models (free premium via PAT)
-        "nim/meta/llama-3.3-70b-instruct",  # NVIDIA NIM (free)
-        "glm/glm-4-flash",             # Z.ai GLM free
-        "cf/@cf/meta/llama-3.1-8b-instruct",  # Cloudflare Workers AI (free)
-        "router/auto/best-coding",     # gateway — general (fallback)
-        "router/auto/best-free",       # gateway — strong general
-        "router/auto/best-reasoning",  # gateway — deep reasoning
-        "router/auto/best-fast",       # gateway — speed-optimised
-        "router/oc/mimo-v2.5-free",    # gateway — MiMo V2.5
-        "opencode/deepseek-v4-flash-free",  # keyless last resort
+        "router/auto/best-coding",     # gateway - VERIFIED LIVE 2026-09-15
+        "router/auto/best-free",       # gateway - VERIFIED LIVE 2026-09-15
+        "router/auto/best-reasoning",  # gateway - deep reasoning
+        "router/auto/best-fast",       # gateway - speed-optimised
+        "router/oc/mimo-v2.5-free",    # gateway - MiMo V2.5
+        "groq/groq/compound",          # 403 on 2026-09-15 - rotate key / check region
+        "agnes/agnes-2.5-pro",         # 403 out-of-quota on 2026-09-15 - top up or drop
+        "opencode/deepseek-v4-flash-free",  # keyless last resort (CLI not installed)
     ]
 
     # ollama brain (fallback)

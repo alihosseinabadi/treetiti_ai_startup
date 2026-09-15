@@ -798,7 +798,6 @@ def chat_stream(
 ):
     """Stream chat response token by token via Server-Sent Events."""
     from fastapi.responses import StreamingResponse
-    import asyncio
     
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message is empty")
@@ -823,12 +822,12 @@ def chat_stream(
     settings = get_settings()
     prompt = f"Conversation so far:\n{context}\n\nReply to the latest message."
 
-    async def event_generator():
+    def event_generator():
         # Send session_id first
         yield f"data: {{\"type\": \"session\", \"session_id\": \"{session.id}\"}}\n\n"
         
         try:
-            from app.llm import llm_complete
+            from app.llm import llm_stream
             from app.memory.store import search_brand_memory, search_memory
             import json
             
@@ -855,19 +854,12 @@ WHAT THE TEAM REMEMBERED:
 
 Keep answers clear, direct and high-end."""
 
-            # Stream the response
+            # Real streaming (spec 18): yield each delta as the model emits it.
             full_response = ""
-            # For now, use the non-streaming complete but simulate streaming by chunking
-            response = llm_complete(system, prompt, model=_chat_model())
-            
-            # Simulate token streaming by yielding chunks
-            words = response.split()
-            for i, word in enumerate(words):
-                chunk = word + (" " if i < len(words) - 1 else "")
-                full_response += chunk
-                token_data = {"type": "token", "content": chunk}
+            for piece in llm_stream(system, prompt, model=_chat_model()):
+                full_response += piece
+                token_data = {"type": "token", "content": piece}
                 yield f"data: {json.dumps(token_data)}\n\n"
-                await asyncio.sleep(0.02)  # Small delay for visual streaming effect
             
             # Update session with the full response
             history.append({"role": "assistant", "content": full_response})

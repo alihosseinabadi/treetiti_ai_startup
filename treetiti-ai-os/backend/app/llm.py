@@ -23,7 +23,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from typing import Any
+from typing import Any, Iterator
 
 from app.config import get_settings
 
@@ -36,6 +36,12 @@ logger = logging.getLogger("treetiti.llm")
 
 _health_lock = threading.Lock()
 _model_failures: dict[str, int] = {}  # model -> consecutive failures
+_model_unhealthy_until: dict[str, float] = {}  # model -> epoch seconds benched until
+# After a model trips the failure threshold it is benched for this long, then
+# allowed back into the chain. Without a cooldown, one transient blip (a single
+# 502 or timeout) sidelined an otherwise healthy model for the whole process
+# lifetime, because nothing ever cleared the counter (spec section 17).
+_COOLDOWN_SECONDS = 300
 _chain_guard = threading.local()  # re-entrancy guard for the free-model chain
 _CHAIN_CANDIDATE_TIMEOUT = 60  # seconds per model — Agnes reasoning model needs 30-60s
 
@@ -55,22 +61,36 @@ class _ChainGuard:
 def _reset_health() -> None:
     with _health_lock:
         _model_failures.clear()
+        _model_unhealthy_until.clear()
 
 
 def _mark_failure(model: str) -> None:
     with _health_lock:
-        _model_failures[model] = _model_failures.get(model, 0) + 1
+        n = _model_failures.get(model, 0) + 1
+        _model_failures[model] = n
+        if n >= get_settings().failover_threshold:
+            _model_unhealthy_until[model] = time.time() + _COOLDOWN_SECONDS
         logger.warning("model marked unhealthy (%d): %s", _model_failures[model], model)
 
 
 def _mark_success(model: str) -> None:
     with _health_lock:
         _model_failures.pop(model, None)
+        _model_unhealthy_until.pop(model, None)
 
 
 def _is_unhealthy(model: str) -> bool:
     settings = get_settings()
     with _health_lock:
+        until = _model_unhealthy_until.get(model, 0.0)
+        if until > 0:
+            if time.time() < until:
+                return True
+            # Cooldown expired: let the model back into the chain (spec 17).
+            _model_unhealthy_until.pop(model, None)
+            _model_failures.pop(model, None)
+            return False
+        # No cooldown recorded (pre-threshold or legacy state): raw counter.
         return _model_failures.get(model, 0) >= settings.failover_threshold
 
 
@@ -79,10 +99,13 @@ def model_health() -> dict[str, dict]:
     settings = get_settings()
     with _health_lock:
         failures = dict(_model_failures)
+        untils = dict(_model_unhealthy_until)
+        now = time.time()
     return {
         m: {
             "consecutive_failures": n,
-            "unhealthy": n >= settings.failover_threshold,
+            "unhealthy": max(0.0, untils.get(m, 0.0) - now) > 0 or n >= settings.failover_threshold,
+            "cooldown_remaining_s": max(0, int(untils.get(m, 0.0) - now)),
         }
         for m, n in failures.items()
     }
@@ -447,11 +470,15 @@ def _dispatch_provider(
                 system, prompt, "google", resolved, temperature, timeout, api_key=keys[0]
             )
         except Exception:  # noqa: BLE001  (fall through the free chain)
+            _mark_failure(model)
             return _dispatch_chain(system, prompt, temperature, timeout, skip=model)
     try:
         return _openai_compatible(system, prompt, prefix, rest, temperature, timeout)
     except Exception as exc:  # noqa: BLE001
-        # Primary provider/model failed -> walk the free chain automatically.
+        # Primary provider/model failed -> record it, then walk the free chain.
+        # Recording matters: without it a dead primary was retried on every
+        # single call forever, never benched (spec section 17).
+        _mark_failure(model)
         logger.warning("provider %s failed (%s) — trying free chain", prefix, str(exc)[:120])
         return _dispatch_chain(system, prompt, temperature, timeout, skip=model)
 
@@ -686,6 +713,24 @@ def _agnes_video_status(
 # Public API
 # ---------------------------------------------------------------------------
 
+def _default_model() -> str:
+    """The capability-ranked default model, else the static configured default.
+
+    Shared by llm_complete and llm_stream so both resolve the same model.
+    """
+    settings = get_settings()
+    if settings.use_model_router:
+        try:
+            from app.core.model_registry import get_registry as model_get_registry  # noqa: PLC0415
+
+            picked = model_get_registry().pick_for_profile("reasoning").model
+            if picked:
+                return picked
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("model router default unavailable (%s) — using static default", str(exc)[:120])
+    return settings.opencode_model
+
+
 def llm_complete(
     system: str,
     prompt: str,
@@ -702,16 +747,7 @@ def llm_complete(
     # Spec §29: with the Model Router enabled, a caller that does not pin a
     # model gets the capability-ranked pick (which flows through 9Router).
     # The static default (opencode CLI) stays as the dev-only fallback.
-    chosen = model
-    if chosen is None and settings.use_model_router:
-        try:
-            from app.core.model_registry import get_registry as model_get_registry  # noqa: PLC0415
-
-            chosen = model_get_registry().pick_for_profile("reasoning").model
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("model router default unavailable (%s) — using static default", str(exc)[:120])
-            chosen = settings.opencode_model
-    chosen = chosen or settings.opencode_model
+    chosen = model or _default_model()
 
     # Route prefixed agent models to free providers (google/groq/openrouter).
     dispatched = _dispatch_provider(system, prompt, chosen, temperature, timeout)
@@ -874,3 +910,133 @@ def _repair(text: str) -> str:
     cleaned = _re.sub(r"\bFalse\b", "false", cleaned)
     cleaned = _re.sub(r"\bNone\b", "null", cleaned)
     return cleaned
+
+# ---------------------------------------------------------------------------
+# Streaming (spec section 18) — real incremental deltas, never a faked replay.
+#
+# Verified against the 9Router gateway on 2026-09-15: auto/best-coding and
+# auto/best-free emit genuine SSE deltas (first token ~2.0s, then ~70 content
+# chunks spread over ~2.6s), so progressive output is real, not simulated.
+# ---------------------------------------------------------------------------
+
+
+def _provider_base_and_key(provider: str) -> tuple[str, str]:
+    """Resolve an OpenAI-compatible provider's base URL and configured key."""
+    settings = get_settings()
+    base, key_field = _PROVIDER_ENDPOINTS[provider]
+    if provider == "agnes":
+        base = settings.agnes_base_url
+    elif provider == "router":
+        base = settings.router_base_url
+    elif provider == "openrouter":
+        base = settings.openrouter_base_url
+    return base, (getattr(settings, key_field, "") or "")
+
+
+def _openai_stream(
+    system: str,
+    prompt: str,
+    provider: str,
+    model: str,
+    temperature: float,
+    timeout: int,
+) -> Iterator[str]:
+    """Yield content deltas from an OpenAI-compatible SSE endpoint."""
+    import httpx  # local import keeps module import cost unchanged
+
+    from app.ratelimit import can_call, record_request
+
+    base, api_key = _provider_base_and_key(provider)
+    if not api_key:
+        raise RuntimeError(f"{provider} API key not set")
+    if not can_call(provider, api_key):
+        raise RuntimeError(f"{provider} daily rate limit reached for this key")
+
+    url = base.rstrip("/") + "/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": "TREEtiti-AI-OS/1.0",
+        "Accept": "text/event-stream",
+    }
+    if provider == "openrouter":
+        headers["HTTP-Referer"] = "https://treetiti.ai"
+        headers["X-Title"] = "TREEtiti AI Marketing OS"
+    body: dict[str, Any] = {
+        "model": model,
+        "temperature": temperature,
+        "stream": True,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ],
+    }
+    with httpx.stream("POST", url, json=body, headers=headers, timeout=timeout) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if not line or not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                frame = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            # Usage-only frames carry an EMPTY choices list; indexing [0]
+            # blindly raises IndexError (observed on the 9Router gateway).
+            choices = frame.get("choices") or []
+            if not choices:
+                continue
+            choice = choices[0]
+            piece = (choice.get("delta") or {}).get("content")
+            if not piece:
+                piece = (choice.get("message") or {}).get("content")
+            if piece:
+                yield piece
+    record_request(provider, api_key)
+
+
+def llm_stream(
+    system: str,
+    prompt: str,
+    *,
+    model: str | None = None,
+    temperature: float = 0.7,
+    timeout: int = 180,
+) -> Iterator[str]:
+    """Yield a completion progressively, as the model produces it (spec 18).
+
+    Real SSE streaming when the resolved provider supports it. Falls back to a
+    single chunk from ``llm_complete`` for providers with no SSE endpoint (the
+    opencode CLI, Ollama), and to the free-model chain when the stream dies
+    before emitting anything — so a caller always receives the answer.
+
+    Never fakes streaming by replaying a finished answer with artificial delays.
+    """
+    chosen = model or _default_model()
+    provider, _, rest = chosen.partition("/")
+    if provider in _PROVIDER_ENDPOINTS:
+        emitted = False
+        try:
+            for piece in _openai_stream(system, prompt, provider, rest, temperature, timeout):
+                emitted = True
+                yield piece
+            if not emitted:
+                raise RuntimeError(f"{chosen} streamed no content")
+            _mark_success(chosen)
+            return
+        except Exception as exc:  # noqa: BLE001
+            _mark_failure(chosen)
+            if emitted:
+                # Deltas already reached the user; do not duplicate the answer.
+                logger.warning("stream interrupted on %s: %s", chosen, str(exc)[:120])
+                return
+            logger.warning("stream failed on %s (%s) — trying free chain", chosen, str(exc)[:120])
+            chained = _dispatch_chain(system, prompt, temperature, timeout, skip=chosen)
+            if chained is not None:
+                yield chained
+                return
+            raise
+    # Providers without an SSE endpoint (opencode CLI, Ollama).
+    yield llm_complete(system, prompt, model=chosen, temperature=temperature, timeout=timeout)
