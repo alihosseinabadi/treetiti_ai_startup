@@ -22,6 +22,7 @@ export function ChatWorkspace({
   const customerName = isCustomer ? context.slice("customer:".length) : "";
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [agentRailOpen, setAgentRailOpen] = useState(true);
 
   // Honor ?s=<sessionId> (e.g. from a project page) once on mount, and
   // re-delegate when the ?agent= param changes (roster clicks while staying
@@ -34,6 +35,7 @@ export function ChatWorkspace({
     if (s) chat.loadSession(s);
     const agent = params.get("agent");
     if (agent && !s && usedAgentParam.current !== agent) {
+      setAgentRailOpen(true);
       const q = params.get("q") ?? "";
       setTimeout(() => void chat.send(`/agent ${agent}${q ? ` ${q}` : ""}`), 350);
     }
@@ -68,10 +70,8 @@ export function ChatWorkspace({
         icon: AGENT_ICONS[agentParam2] ?? "brain",
       }
     : null;
-  const agentRail = agentParam2 ? (
-    <div className="t-rail">
-      <AgentContextPanel agentKey={agentParam2} />
-    </div>
+  const agentRail = agentParam2 && agentRailOpen ? (
+    <AgentContextPanel agentKey={agentParam2} onClose={() => setAgentRailOpen(false)} />
   ) : null;
   const emptyTitle = isCustomer ? `Talk to ${customerName}'s CEO` : "What do you want TREEtiti to do?";
   const emptyHint = isCustomer

@@ -730,3 +730,35 @@
   background: rgba(122, 162, 247, 0.28);
   color: #fff;
 }
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .t-rail {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(320px, 88vw);
+    z-index: 60;
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.55);
+  }
+}
+
+@media (max-width: 760px) {
+  .t-sidebar {
+    width: 46px;
+  }
+  /* hide labels, item text, phase labels, chat titles */
+  .t-sidebar-label,
+  .t-sidebar-item > span:not(.t-ico):not([class*="grid"]),
+  .t-sidebar-row > .t-sidebar-item > span,
+  .t-del,
+  .t-newchat > span:not(.t-ico) {
+    display: none;
+  }
+  .t-sidebar-item {
+    justify-content: center;
+    padding: 6px 0 !important;
+  }
+  .t-newchat {
+    justify-content: center;
+  }
+}

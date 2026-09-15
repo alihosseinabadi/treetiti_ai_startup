@@ -39,7 +39,7 @@ function Chips({ items, color }: { items: string[]; color: string }) {
   );
 }
 
-export function AgentContextPanel({ agentKey }: { agentKey: string }) {
+export function AgentContextPanel({ agentKey, onClose }: { agentKey: string; onClose?: () => void }) {
   const navigate = useNavigate();
   const { agents } = useOffice();
   const [profile, setProfile] = useState<Teammate | null>(null);
@@ -103,6 +103,15 @@ export function AgentContextPanel({ agentKey }: { agentKey: string }) {
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: pinfo.color, boxShadow: `0 0 6px ${pinfo.color}` }} />
           {pinfo.label}
         </span>
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close agent panel"
+            className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-border text-text-muted transition hover:border-border-hover hover:text-text-primary"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* description */}
