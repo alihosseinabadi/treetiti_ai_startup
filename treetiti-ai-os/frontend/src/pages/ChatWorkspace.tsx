@@ -5,6 +5,7 @@ import { AppShell } from "../components/shell/AppShell";
 import { Conversation } from "../components/chat/Conversation";
 import { CommandPalette } from "../components/ui";
 import { KeyboardShortcutsHelp } from "../components/ui";
+import { AGENT_ACCENTS, AGENT_ICONS, AGENT_NAMES, AGENT_ROLES } from "../office/config";
 
 export function ChatWorkspace({
   context,
@@ -56,6 +57,16 @@ export function ChatWorkspace({
   }, []);
 
   const persona = isCustomer ? `Customer CEO · ${customerName}` : "TREEtiti AI Team";
+  const agentParam2 = params.get("agent");
+  const agentIdentity = agentParam2
+    ? {
+        key: agentParam2,
+        name: AGENT_NAMES[agentParam2] ?? agentParam2,
+        role: AGENT_ROLES[agentParam2] ?? "Agent",
+        accent: AGENT_ACCENTS[agentParam2] ?? "#a1a1aa",
+        icon: AGENT_ICONS[agentParam2] ?? "brain",
+      }
+    : null;
   const emptyTitle = isCustomer ? `Talk to ${customerName}'s CEO` : "What do you want TREEtiti to do?";
   const emptyHint = isCustomer
     ? "Ask about their missions, campaigns, or tell the CEO what to work on next."
@@ -86,6 +97,7 @@ export function ChatWorkspace({
           emptyHint={emptyHint}
           placeholder={placeholder}
           onShortcut={navigate}
+          agentIdentity={agentIdentity}
         />
       </AppShell>
       {cmdPaletteOpen && (

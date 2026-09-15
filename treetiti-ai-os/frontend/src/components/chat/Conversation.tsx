@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChatApi, ChatMsg, stageText } from "../../hooks/useChat";
 import { Approval, MediaAsset, Teammate, TaskRow } from "../../api";
 import { AgentCard } from "../../components/agent/AgentCard";
+import { IconGlyph } from "../../office/Mascot";
 import { Message } from "./Message";
 import { Composer } from "./Composer";
 import { OnboardingConversation } from "./OnboardingConversation";
@@ -513,6 +514,7 @@ export function Conversation({
   emptyHint,
   placeholder,
   onShortcut,
+  agentIdentity,
 }: {
   chat: ChatApi;
   persona: string;
@@ -520,6 +522,7 @@ export function Conversation({
   emptyHint: string;
   placeholder: string;
   onShortcut?: (to: string) => void;
+  agentIdentity?: { key: string; name: string; role: string; accent: string; icon: string } | null;
 }) {
   const navigate = useNavigate();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -556,10 +559,27 @@ export function Conversation({
     <div className="flex h-full min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-center gap-3 border-b border-border bg-bg-primary/80 px-4 py-2.5 backdrop-blur-sm">
         {/* agent identity */}
-        <div className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-accent/10 text-[13px] text-accent">
-          ◈
-        </div>
-        <span className="text-xs font-medium tracking-wide text-text-secondary">{persona}</span>
+        {agentIdentity ? (
+          <div className="flex items-center gap-2">
+            <span
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border"
+              style={{ borderColor: `${agentIdentity.accent}66`, background: `${agentIdentity.accent}1a` }}
+            >
+              <IconGlyph icon={agentIdentity.icon} accent={agentIdentity.accent} size={15} />
+            </span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-xs font-semibold tracking-wide text-text-primary">{agentIdentity.name}</span>
+              <span className="text-[10px] text-text-muted">{agentIdentity.role}</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-accent/10 text-[13px] text-accent">
+              ◈
+            </div>
+            <span className="text-xs font-medium tracking-wide text-text-secondary">{persona}</span>
+          </>
+        )}
         <span className="hidden items-center gap-1.5 rounded-full border border-border bg-bg-secondary px-2 py-0.5 text-[10px] text-text-muted sm:inline-flex">
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
