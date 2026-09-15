@@ -1,0 +1,49 @@
+name: Backend tests
+
+on:
+  push:
+    paths:
+      - "treetiti-ai-os/backend/**"
+      - ".github/workflows/backend-tests.yml"
+  pull_request:
+    paths:
+      - "treetiti-ai-os/backend/**"
+      - ".github/workflows/backend-tests.yml"
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: treetiti-ai-os/backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: treetiti
+          POSTGRES_PASSWORD: treetiti
+          POSTGRES_DB: treetiti_ai_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U treetiti"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://treetiti:treetiti@localhost:5432/treetiti_ai_os
+      SEED_KNOWLEDGE: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: treetiti-ai-os/backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run test suite
+        run: python -m pytest -q
