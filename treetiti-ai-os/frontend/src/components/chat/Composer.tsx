@@ -28,6 +28,7 @@ interface ComposerProps {
   busy: boolean;
   placeholder?: string;
   autoFocus?: boolean;
+  model?: string;
   teammates?: { id: string; name: string; avatar: string; agent_key: string }[];
   teams?: { id: string; name: string; member_ids: string[] }[];
   clients?: { id: string; name: string }[];
@@ -40,6 +41,7 @@ export function Composer({
   busy,
   placeholder,
   autoFocus,
+  model = "router/auto/best-coding",
   teammates = [],
   teams = [],
   clients = [],
@@ -147,8 +149,6 @@ export function Composer({
   const submit = (confirm = false) => {
     const t = text.trim();
     if (!t || busy) return;
-
-    // Extract mentions from text
     const mentions: Mentionable[] = [];
     const mentionRegex = /[@#]([^\s@#]+)/g;
     let match;
@@ -166,24 +166,16 @@ export function Composer({
         (m) => m.name.toLowerCase() === name.toLowerCase()
       );
       if (found) {
-        const f = found as {
-          id: string;
-          name: string;
-          avatar?: string;
-          agent_key?: string;
-          member_ids?: string[];
-          client?: string;
-        };
+        const f = found as any;
         mentions.push({
           id: f.id,
-          type: type as "teammate" | "team" | "client" | "project",
+          type: type as any,
           name: f.name,
           avatar: f.avatar,
-          subtitle: f.agent_key ?? (f.member_ids ? `${f.member_ids.length} members` : f.client),
+          subtitle: f.agent_key ?? f.client,
         });
       }
     }
-
     setText("");
     setSlashOpen(false);
     setMentionOpen(false);
@@ -195,9 +187,7 @@ export function Composer({
     const isMenuOpen = slashOpen || mentionOpen;
     if (isMenuOpen) {
       const isSlash = activeType === "slash";
-      const slashResultsTyped = slashResults as SlashCmd[];
-      const mentionResultsTyped = mentionResults as Mentionable[];
-      const results = isSlash ? slashResultsTyped : mentionResultsTyped;
+      const results = isSlash ? slashResults : mentionResults;
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setSel((s) => (s + 1) % results.length);
@@ -233,18 +223,14 @@ export function Composer({
   const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setText(value);
-
-    // Detect @ or # for mentions
     const cursorPos = e.target.selectionStart;
     const beforeCursor = value.slice(0, cursorPos);
     const lastAt = beforeCursor.lastIndexOf("@");
     const lastHash = beforeCursor.lastIndexOf("#");
     const lastMention = Math.max(lastAt, lastHash);
-
     if (lastMention >= 0 && !beforeCursor.slice(lastMention).includes(" ")) {
       lastAtIndex.current = lastMention + 1;
-      const mentionQuery = beforeCursor.slice(lastMention + 1);
-      setQuery(mentionQuery);
+      setQuery(beforeCursor.slice(lastMention + 1));
       setMentionOpen(true);
       setSlashOpen(false);
       setActiveType("mention");
@@ -261,28 +247,30 @@ export function Composer({
     }
   };
 
+  const resultsList = (slashOpen || mentionOpen) ? (activeType === "slash" ? slashResults : mentionResults) : [];
+
   return (
     <div className="relative">
-      {(slashOpen || mentionOpen) && (activeType === "slash" ? slashResults : mentionResults).length > 0 && (
+      {resultsList.length > 0 && (
         <div className="t-palette absolute bottom-full z-20 mb-2 w-full" ref={paletteRef} role="listbox">
           <div className="px-4 py-2 text-[10px] uppercase tracking-widest text-text-muted">
             {activeType === "slash" ? "Commands" : "Mentions"}
           </div>
-          {(activeType === "slash" ? slashResults : mentionResults).map((c, i) => {
+          {resultsList.map((c: any, i: number) => {
             const isMention = activeType === "mention";
             return (
               <button
-                key={isMention ? (c as Mentionable).id : (c as SlashCmd).cmd}
+                key={isMention ? c.id : c.cmd}
                 role="option"
                 aria-selected={i === sel}
                 className={`t-palette-item ${i === sel ? "selected" : ""}`}
                 onMouseEnter={() => setSel(i)}
-                onClick={() => isMention ? applyMention(c as Mentionable) : applySlash((c as SlashCmd).cmd)}
+                onClick={() => isMention ? applyMention(c) : applySlash(c.cmd)}
               >
-                <span className="t-ico">{isMention ? (c as Mentionable).avatar || "🤖" : (c as SlashCmd).icon}</span>
-                <span className="t-pk">{isMention ? `@${(c as Mentionable).name}` : (c as SlashCmd).cmd}</span>
+                <span className="t-ico">{isMention ? (c.avatar || "🤖") : c.icon}</span>
+                <span className="t-pk">{isMention ? `@${c.name}` : c.cmd}</span>
                 <span className="t-phint">
-                  {isMention ? (c as Mentionable).subtitle || (c as Mentionable).type : (c as SlashCmd).hint}
+                  {isMention ? (c.subtitle || c.type) : c.hint}
                 </span>
               </button>
             );
@@ -290,106 +278,71 @@ export function Composer({
         </div>
       )}
 
-      <div className="t-composer t-composer-wrap">
-        <div className="flex items-end gap-1 p-2.5">
-          <button
-            onClick={() => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.multiple = true;
-              input.onchange = (e) => {
-                const filesList = Array.from(
-                  (e.target as HTMLInputElement).files || []
-                );
-                const fileNames = filesList.map((f) => f.name).join(", ");
-                setText((t) => `${t}[Files: ${fileNames}] `);
-              };
-              input.click();
-            }}
-            className="t-attach-btn"
-            title="Attach files"
-            aria-label="Attach files"
-          >
-            📎
-          </button>
-          <button
-            onClick={() => setSlashOpen((v) => !v)}
-            className="t-attach-btn"
-            title="Commands"
-            aria-label="Commands"
-          >
-            +
-          </button>
-          <textarea
-            ref={taRef}
-            value={text}
-            onChange={onChange}
-            onKeyDown={onKeyDown}
-            rows={1}
-            placeholder={
-              placeholder ??
-              "Ask TREEtiti anything… (type / for commands, @ for teammates)"
-            }
-            aria-label="Message"
-            className="max-h-40 flex-1 resize-none bg-transparent px-2 py-2.5 text-[15px] text-text-primary outline-none placeholder:text-text-muted"
-            style={{ lineHeight: 1.5 }}
-          />
-          {speechSupported && (
+      <div className="oc-composer">
+        <textarea
+          ref={taRef}
+          value={text}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          rows={1}
+          placeholder={placeholder ?? "Message"}
+          aria-label="Message"
+          className="oc-composer-input"
+        />
+        <div className="oc-composer-footer">
+          <div className="flex items-center gap-2 text-[11px] text-text-muted">
+            {speechSupported && (
+              <button
+                onClick={() => {
+                  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                  if (!SR) return;
+                  if (listening) { setListening(false); return; }
+                  const rec = new SR();
+                  rec.lang = "en-US";
+                  rec.interimResults = true;
+                  rec.continuous = true;
+                  rec.onresult = (e: any) => {
+                    for (let i = e.resultIndex; i < e.results.length; i++) {
+                      const r = e.results[i];
+                      if (r?.isFinal) setText((t) => t ? `${t} ${r.transcript}` : r.transcript);
+                    }
+                  };
+                  rec.onend = () => setListening(false);
+                  rec.onerror = () => setListening(false);
+                  setListening(true);
+                  rec.start();
+                }}
+                className={`rounded p-1 transition-colors ${listening ? "text-error" : "text-text-muted hover:text-text-primary"}`}
+                title={listening ? "Stop listening" : "Voice input"}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+              </button>
+            )}
+            <span className="flex items-center gap-1">
+              <kbd className="oc-kbd">/</kbd> commands
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="oc-kbd">@</kbd> agents
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1 rounded-md border border-border bg-bg-tertiary px-2 py-1 text-[10.5px] font-medium text-text-secondary">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+              {model.split("/").pop()}
+            </span>
             <button
-              onClick={() => {
-                const SR =
-                  (window as any).SpeechRecognition ||
-                  (window as any).webkitSpeechRecognition;
-                if (!SR) return;
-                if (listening) {
-                  setListening(false);
-                  return;
-                }
-                const rec = new SR();
-                rec.lang = "en-US";
-                rec.interimResults = true;
-                rec.continuous = true;
-                rec.onresult = (e: any) => {
-                  let interim = "";
-                  for (let i = e.resultIndex; i < e.results.length; i++) {
-                    const r: any = e.results[i];
-                    if (r && r.isFinal)
-                      setText((t) => (t ? `${t} ${r.transcript}` : r.transcript));
-                    else if (r && !r.isFinal) interim = r.transcript;
-                  }
-                  if (interim) setText((t) => t);
-                };
-                rec.onend = () => setListening(false);
-                rec.onerror = () => setListening(false);
-                setListening(true);
-                (rec as any)._stop = () => rec.stop();
-                (window as any).__treetiti_rec = rec;
-                rec.start();
-              }}
-              className={`t-attach-btn ${listening ? "!bg-error/10 !text-error" : ""}`}
-              title={listening ? "Stop listening" : "Voice input"}
-              aria-label={listening ? "Stop listening" : "Voice input"}
+              onClick={() => submit()}
+              disabled={busy || !text.trim()}
+              className="oc-send"
+              title="Send"
+              aria-label="Send"
             >
-              🎙
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19V5" /><path d="m5 12 7-7 7 7" />
+              </svg>
             </button>
-          )}
-          <button
-            onClick={() => submit()}
-            disabled={busy || !text.trim()}
-            className="t-send-btn"
-            title="Send"
-            aria-label="Send"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19V5" /><path d="m5 12 7-7 7 7" />
-            </svg>
-          </button>
-        </div>
-        <div className="t-composer-hint">
-          <kbd className="t-kbd">/</kbd> commands ·
-          <kbd className="t-kbd">@</kbd> teammates ·
-          <kbd className="t-kbd">#</kbd> teams ·
-          <kbd className="t-kbd">Enter</kbd> send · <kbd className="t-kbd">Shift↵</kbd> new line
+          </div>
         </div>
       </div>
     </div>
