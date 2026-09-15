@@ -6,6 +6,7 @@ import { Conversation } from "../components/chat/Conversation";
 import { CommandPalette } from "../components/ui";
 import { KeyboardShortcutsHelp } from "../components/ui";
 import { AGENT_ACCENTS, AGENT_ICONS, AGENT_NAMES, AGENT_ROLES } from "../office/config";
+import { AgentContextPanel } from "../components/shell/AgentContextPanel";
 
 export function ChatWorkspace({
   context,
@@ -67,6 +68,11 @@ export function ChatWorkspace({
         icon: AGENT_ICONS[agentParam2] ?? "brain",
       }
     : null;
+  const agentRail = agentParam2 ? (
+    <div className="t-rail">
+      <AgentContextPanel agentKey={agentParam2} />
+    </div>
+  ) : null;
   const emptyTitle = isCustomer ? `Talk to ${customerName}'s CEO` : "What do you want TREEtiti to do?";
   const emptyHint = isCustomer
     ? "Ask about their missions, campaigns, or tell the CEO what to work on next."
@@ -88,7 +94,12 @@ export function ChatWorkspace({
         onNewChat={chat.newChat}
         onSelectSession={chat.loadSession}
         onDeleteSession={chat.deleteSession}
-        rail={rail}
+        rail={
+          <>
+            {agentRail}
+            {rail}
+          </>
+        }
       >
         <Conversation
           chat={chat}
