@@ -100,6 +100,39 @@ KEYWORD_ROUTES: list[tuple[str, str]] = [
 
 DEFAULT_AGENT = "campaign"
 
+# Whole-company / autonomous-task hints (spec §29/§30: ONE CHAT). When a prompt
+# signals a full-team brief, the chat routes to the CEO instead of one
+# specialist. Checked BEFORE keyword routing because broad phrases like
+# "launch campaign" also match single-agent keywords.
+COMPANY_TASK_HINTS: tuple[str, ...] = (
+    "from zero",
+    "end to end",
+    "end-to-end",
+    "whole team",
+    "whole company",
+    "complete campaign",
+    "full campaign",
+    "launch campaign",
+    "build a campaign",
+    "build the campaign",
+    "instagram campaign",
+    "marketing campaign",
+    "run the whole",
+    "run the team",
+    "run the company",
+    "autonomous task",
+    "do everything",
+    "take this brand",
+    "build me a full",
+    "build me a complete",
+)
+
+
+def is_company_task(prompt: str) -> bool:
+    """True when the prompt is a broad, full-team brief (ONE CHAT)."""
+    text = " " + prompt.lower() + " "
+    return any(hint in text for hint in COMPANY_TASK_HINTS)
+
 
 def route_prompt(prompt: str) -> str:
     """First pass: instant keyword routing. Returns an agent key or ''."""
@@ -155,9 +188,13 @@ def dispatch(prompt: str) -> tuple[str, dict[str, Any]]:
     open-ended narrative prompts we also include a generic 'request' key so an
     agent can add the user's wording to its own inputs.
     """
+    if is_company_task(prompt):
+        return "ceo", {"brief": prompt}
     key = route_prompt(prompt) or detect_agent(prompt)
     payload: dict[str, Any] = {}
-    if key == "campaign":
+    if key == "ceo":
+        payload = {"brief": prompt}
+    elif key == "campaign":
         payload = {"objective": prompt}
     elif key == "developer":
         payload = {"issue": prompt, "category": "build"}
@@ -182,4 +219,4 @@ def dispatch(prompt: str) -> tuple[str, dict[str, Any]]:
     return key, payload
 
 
-__all__ = ["route_prompt", "detect_agent", "dispatch"]
+__all__ = ["route_prompt", "detect_agent", "dispatch", "is_company_task"]

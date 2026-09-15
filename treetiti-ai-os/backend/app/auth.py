@@ -18,7 +18,7 @@ from app.config import get_settings
 from app.database import SessionLocal, get_db
 from app.models import User
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 ALGORITHM = "HS256"

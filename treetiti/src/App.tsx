@@ -10,6 +10,7 @@ import CinematicHome from "./components/cinematic/CinematicHome"
 import Footer from "./components/Footer"
 import { ChatWidget } from "./components/widgets/ChatWidget"
 import { WhatsAppButton } from "./components/widgets/WhatsAppButton"
+import { PipCompanion } from "./components/Pip"
 import AdminRouter from "./app/admin/AdminRouter"
 import StartPage from "./pages/StartPage"
 import Privacy from "./pages/Privacy"
@@ -59,6 +60,7 @@ export default function App() {
 
   return (
     <>
+      {!isAdmin && <PipCompanion />}
       {isStart ? (
         <AnimatePresence mode="wait">
           <motion.div

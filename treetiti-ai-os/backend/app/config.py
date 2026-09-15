@@ -125,6 +125,10 @@ class Settings(BaseSettings):
     free_model_chain: list[str] = [
         "groq/groq/compound",          # Groq Compound direct API — VERIFIED LIVE (~1.4s)
         "agnes/agnes-2.5-pro",         # Agnes hub direct (reasoning, quota exhausted 2026-09)
+        "ghm/gpt-4.1-mini",            # GitHub Models (free premium via PAT)
+        "nim/meta/llama-3.3-70b-instruct",  # NVIDIA NIM (free)
+        "glm/glm-4-flash",             # Z.ai GLM free
+        "cf/@cf/meta/llama-3.1-8b-instruct",  # Cloudflare Workers AI (free)
         "router/auto/best-coding",     # gateway — general (fallback)
         "router/auto/best-free",       # gateway — strong general
         "router/auto/best-reasoning",  # gateway — deep reasoning
@@ -175,10 +179,28 @@ class Settings(BaseSettings):
     # in this WSL env "localhost" resolves to ::1 where nothing listens.
     router_base_url: str = "http://127.0.0.1:20128/v1"
     router_key: str = ""
+    # GitHub Models — free premium-model access via a GitHub PAT
+    # (models.github.ai/inference: GPT-4.1, Claude, DeepSeek, Llama).
+    github_models_key: str = ""
+    github_models_model: str = "gpt-4.1-mini"
+    # NVIDIA NIM — free NVIDIA-hosted Llama/Qwen/DeepSeek (build.nvidia.com).
+    nim_key: str = ""
+    nim_model: str = "meta/llama-3.3-70b-instruct"
+    # Z.ai (Zhipu) — free GLM-4-Flash text + image/video (open.bigmodel.cn / api.z.ai).
+    zai_key: str = ""
+    zai_model: str = "glm-4-flash"
+    # Cloudflare Workers AI — free 10k neurons/day on the edge.
+    cf_key: str = ""
+    cf_account_id: str = ""
+    cf_model: str = "@cf/meta/llama-3.1-8b-instruct"
     # Per-key daily rate limits (requests) from the design doc. When a provider
     # key is exhausted the client fails over instead of erroring.
     rate_limit_openrouter_daily: int = 50
     rate_limit_groq_daily: int = 1440
+    rate_limit_github_models_daily: int = 1000
+    rate_limit_nim_daily: int = 2000
+    rate_limit_zai_daily: int = 4000
+    rate_limit_cf_daily: int = 10000
 
     # --- Database (PostgreSQL + pgvector) ---
     database_url: str = "postgresql+psycopg://treetiti:treetiti@localhost:5432/treetiti_ai_os"

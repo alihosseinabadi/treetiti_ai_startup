@@ -17,7 +17,10 @@ from typing import Any
 from app.agents.base import BaseAgent
 from app.database import SessionLocal
 from app.models import ResearchOpportunity
+from app.services.scrape import scrape_page
 from app.services.search import fetch_text, search_web
+
+from app.agents.prompts.research import SYSTEM_PROMPT
 
 DEFAULT_SOURCES = [
     "https://techcrunch.com",
@@ -32,17 +35,16 @@ class MarketResearchAgent(BaseAgent):
     model = "zai/glm-4.7-flash"  # strongest verified free reasoning for daily batch
     name = "Market Research Agent"
     role = "market intelligence analyst"
-    system_prompt = """\
-You research the AI industry for TREEtiti, a premium AI agency.
-You track: AI agents, business automation, AI websites, CRM automation,
-AI marketing systems. You find trends competitors miss and convert them into
-content opportunities for B2B decision-makers. You ground every conclusion in
-the research findings provided — you never invent data."""
+    system_prompt = SYSTEM_PROMPT
 
-    def _research(self, ideas: list[str], sources: list[str]) -> dict[str, Any]:
+    def _research(
+        self, ideas: list[str], sources: list[str], scrape_urls: list[str] | None = None
+    ) -> dict[str, Any]:
         """Gather real web evidence from the given ideas + sources.
 
         Returns {"searched": [str], "findings": [...]} — always populated.
+        `scrape_urls` are deep-read with ScrapeGraphAI (structured LLM
+        extraction); if the library is unavailable we fall back to plain text.
         """
         topics = [i for i in ideas if i] or [
             "AI agents for business automation",
@@ -66,6 +68,16 @@ the research findings provided — you never invent data."""
             if text:
                 findings.append(f"[source {url}] {text[:800]}")
 
+        # Structured LLM scrape of the pages the owner explicitly asked about.
+        for url in (scrape_urls or [])[:3]:
+            data = scrape_page(url, max_chars=2500)
+            if data.get("fallback"):
+                if data.get("text"):
+                    findings.append(f"[scraped {url}] {data['text'][:800]}")
+            else:
+                summary = json.dumps(data, ensure_ascii=False)[:1200]
+                findings.append(f"[scrapegraphai {url}] {summary}")
+
         if not findings:
             findings = [
                 "No live web signal available — relying on internal knowledge."
@@ -78,11 +90,12 @@ the research findings provided — you never invent data."""
         extra_context: str = "",
         ideas: list[str] | None = None,
         sources: list[str] | None = None,
+        scrape_urls: list[str] | None = None,
     ) -> dict[str, Any]:
         ideas = ideas or []
         sources = sources or DEFAULT_SOURCES
 
-        research = self._research(ideas, sources)
+        research = self._research(ideas, sources, scrape_urls)
 
         result = self.complete_json(
             f"""Today's date: use current date.

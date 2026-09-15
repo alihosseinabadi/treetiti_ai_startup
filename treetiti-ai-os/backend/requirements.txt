@@ -14,3 +14,12 @@ bcrypt==4.0.1
 PyJWT>=2.9
 httpx>=0.27
 pytest>=8.3
+
+# Optional: LLM structured scraping for the Market Research agent
+# (SmartScraperGraph). The researcher degrades to plain fetch_text if these
+# are missing, so install is not required. After installing, also run:
+#   python -m playwright install chromium
+scrapegraphai>=2.0
+langchain-groq>=1.1
+playwright>=1.49
+langgraph>=0.4

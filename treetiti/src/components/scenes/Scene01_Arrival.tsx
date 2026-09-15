@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router-dom"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
+import HeroChat from "../HeroChat"
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -11,7 +11,7 @@ export default function Scene01_Arrival() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLParagraphElement>(null)
-  const ctaRef = useRef<HTMLDivElement>(null)
+  const chatRef = useRef<HTMLDivElement>(null)
   const indicatorRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
 
@@ -37,7 +37,7 @@ export default function Scene01_Arrival() {
         ease: "power2.out",
       })
       tl.to(subtitleRef.current, { y: -80, opacity: 0, ease: "power2.out" }, 0)
-      tl.to(ctaRef.current, { y: -60, opacity: 0, ease: "power2.out" }, 0)
+      tl.to(chatRef.current, { y: -100, opacity: 0, ease: "power2.out" }, 0)
       tl.to(indicatorRef.current, { opacity: 0, ease: "power2.out" }, 0)
       tl.to(glowRef.current, { scale: 2, opacity: 0, ease: "power1.in" }, 0)
     }, section)
@@ -74,21 +74,8 @@ export default function Scene01_Arrival() {
           </h1>
         </div>
 
-        <div ref={ctaRef} className="mt-12">
-          <Link
-            to="/start"
-            className="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-full text-sm font-medium text-white overflow-hidden"
-            style={{
-              background: "linear-gradient(135deg, rgba(110,168,255,0.15), rgba(110,168,255,0.03))",
-              border: "1px solid rgba(110,168,255,0.2)",
-            }}
-          >
-            <span className="relative z-10">{t("cinematicHome.startYourProject")}</span>
-            <svg className="relative z-10 w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#6EA8FF]/0 via-[#6EA8FF]/8 to-[#6EA8FF]/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-          </Link>
+        <div ref={chatRef} className="mt-8 md:mt-10 w-full">
+          <HeroChat />
         </div>
       </div>
 

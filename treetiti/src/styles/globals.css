@@ -869,3 +869,61 @@ html[dir="rtl"] .rtl-flip-arrow svg,
 html[dir="rtl"] svg.rtl-flip-arrow {
   transform: rotateY(180deg);
 }
+
+/* ===== Hero chat ===== */
+@keyframes heroChatBorder {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.hero-chat-border {
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--accent) 60%, transparent),
+    transparent 28%,
+    transparent 72%,
+    color-mix(in srgb, var(--accent) 50%, transparent));
+  background-size: 250% 250%;
+  animation: heroChatBorder 7s ease-in-out infinite;
+  box-shadow: 0 30px 90px -28px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+@keyframes heroChatSpin {
+  to { transform: rotate(360deg); }
+}
+.hero-chat-ring {
+  background: conic-gradient(from 0deg, var(--accent), #a78bfa, #67e8f9, var(--accent));
+  animation: heroChatSpin 5s linear infinite;
+}
+.hero-chat-shimmer {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 65%, transparent), transparent);
+  background-size: 200% 100%;
+  animation: heroChatBorder 3.2s linear infinite;
+}
+@keyframes heroChatFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(14px, -18px) scale(1.08); }
+}
+.hero-chat-orb-1 { animation: heroChatFloat 9s ease-in-out infinite; }
+.hero-chat-orb-2 { animation: heroChatFloat 12s ease-in-out infinite reverse; }
+.hero-chat-input:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.hero-chat-send {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  transition: transform 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
+}
+.hero-chat-send:hover:not(:disabled) { transform: scale(1.1); filter: brightness(1.12); }
+.hero-chat-send:active:not(:disabled) { transform: scale(0.94); }
+.hero-chat-chip {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.hero-chat-chip:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--accent) 16%, transparent) !important;
+  box-shadow: 0 8px 24px -8px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+@keyframes heroChatPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, #34d399 55%, transparent); }
+  60% { box-shadow: 0 0 0 6px color-mix(in srgb, #34d399 0%, transparent); }
+}
+.hero-chat-dot { animation: heroChatPulse 2.2s ease-out infinite; }

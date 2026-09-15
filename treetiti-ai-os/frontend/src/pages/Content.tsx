@@ -56,8 +56,8 @@ export default function Content() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Content</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
+          <h1 className="text-xl font-semibold text-text-primary">Content</h1>
+          <p className="text-sm text-text-muted mt-0.5">
             Review, approve and publish the content your agents produce.
           </p>
         </div>
@@ -68,8 +68,8 @@ export default function Content() {
               onClick={() => setFilter(f)}
               className={`rounded-lg px-3 py-1.5 text-xs border transition ${
                 filter === f
-                  ? "border-emerald-600 bg-emerald-500/10 text-emerald-300"
-                  : "border-zinc-700 text-zinc-400 hover:bg-zinc-900"
+                  ? "border-success bg-success/10 text-success"
+                  : "border-white/[0.1] text-text-muted hover:bg-secondary/[0.06]"
               }`}
             >
               {f || "all"}
@@ -79,32 +79,32 @@ export default function Content() {
       </div>
 
       <ErrorBanner message={error} />
-      {notice && <p className="text-xs text-emerald-400">{notice}</p>}
-      {busy && <p className="text-xs text-zinc-500">Working…</p>}
+      {notice && <p className="text-xs text-success">{notice}</p>}
+      {busy && <p className="text-xs text-text-muted">Working…</p>}
 
       {items.length === 0 ? (
         <Card title="No content">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-text-muted">
             Generate content with the Content Creation Agent on the Agents page.
           </p>
         </Card>
       ) : (
         <div className="space-y-3">
           {items.map((c) => (
-            <div key={c.id} className="rounded-xl border border-zinc-800/80 bg-zinc-900/40">
+            <div key={c.id} className="rounded-xl border border-white/[0.06] bg-bg-secondary">
               <button
                 className="w-full flex items-center justify-between gap-4 px-5 py-3 text-left"
                 onClick={() => setExpanded(expanded === c.id ? null : c.id)}
               >
                 <div className="min-w-0">
-                  <div className="text-sm text-white truncate">{c.title}</div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-sm text-text-primary truncate">{c.title}</div>
+                  <div className="text-xs text-text-muted">
                     {c.platform} · {c.content_type}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   {c.engagement_score != null && (
-                    <span className="text-xs font-mono text-zinc-400">{c.engagement_score}</span>
+                    <span className="text-xs font-mono text-text-muted">{c.engagement_score}</span>
                   )}
                   <StatusPill status={c.status} />
                 </div>
@@ -113,15 +113,15 @@ export default function Content() {
               {expanded === c.id && (
                 <div className="px-5 pb-4 space-y-3">
                   {c.hook && (
-                    <p className="text-sm text-zinc-300">
-                      <span className="text-zinc-500">Hook: </span>
+                    <p className="text-sm text-text-muted">
+                      <span className="text-text-muted">Hook: </span>
                       {c.hook}
                     </p>
                   )}
-                  <p className="text-sm text-zinc-300 whitespace-pre-wrap">{c.body}</p>
+                  <p className="text-sm text-text-muted whitespace-pre-wrap">{c.body}</p>
                   {c.cta && (
-                    <p className="text-sm text-emerald-300">
-                      <span className="text-zinc-500">CTA: </span>
+                    <p className="text-sm text-success">
+                      <span className="text-text-muted">CTA: </span>
                       {c.cta}
                     </p>
                   )}
@@ -129,21 +129,21 @@ export default function Content() {
                     <button
                       onClick={() => setStatus(c.id, "approved")}
                       disabled={busy}
-                      className="rounded-lg bg-emerald-500/15 border border-emerald-700 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 transition disabled:opacity-50"
+                      className="rounded-lg bg-success/10 border border-success px-3 py-1.5 text-xs text-success hover:bg-success/20 transition disabled:opacity-50"
                     >
                       Approve
                     </button>
                     <button
                       onClick={() => setStatus(c.id, "rejected")}
                       disabled={busy}
-                      className="rounded-lg bg-red-500/15 border border-red-800 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/25 transition disabled:opacity-50"
+                      className="rounded-lg bg-error/15 border border-error px-3 py-1.5 text-xs text-error hover:bg-error/25 transition disabled:opacity-50"
                     >
                       Reject
                     </button>
                     <button
                       onClick={() => publish(c.id)}
                       disabled={busy || c.status !== "approved"}
-                      className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-emerald-400 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="rounded-lg bg-success px-3 py-1.5 text-xs font-semibold text-bg-primary hover:bg-success transition disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Publish → Telegram
                     </button>

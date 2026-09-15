@@ -12,12 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.arena import start_arena, stop_arena
 from app.auth import ensure_admin_user
 from app.brain import seed_business_knowledge
 from app.config import get_settings
 from app.database import ensure_schema
-from app.routers import agents, arena, auth, chat, content, directory, leads, memory, webhooks
+from app.logging_config import configure_logging
+from app.routers import agents, approvals, assets, auth, campaigns, chat, clients, connectors, content, directory, leads, mcp, memory, missions, projects, providers, research, routines, talk, tasks, templates, teammates, webhooks
+from app.routers.projects import seed_primary_project
 from app.scheduler import start_autopilot, stop_autopilot
 
 logger = logging.getLogger("treetiti")
@@ -25,15 +26,15 @@ logger = logging.getLogger("treetiti")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_logging()
     ensure_schema()
     ensure_admin_user()
     seed_business_knowledge()
-    start_arena()
-    start_autopilot()
-    logger.info("TREEtiti AI Marketing OS ready (autopilot on, arena self-driving)")
+    seed_primary_project()
+    # start_autopilot()  # Disabled for dev
+    logger.info("TREEtiti AI Marketing OS ready (autopilot on)")
     yield
-    stop_arena()
-    stop_autopilot()
+    # stop_autopilot()  # Disabled for dev
 
 
 def create_app() -> FastAPI:
@@ -61,11 +62,26 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix=api_prefix)
     app.include_router(memory.router, prefix=api_prefix)
     app.include_router(agents.router, prefix=api_prefix)
-    app.include_router(arena.router, prefix=api_prefix)
     app.include_router(content.router, prefix=api_prefix)
     app.include_router(leads.router, prefix=api_prefix)
     app.include_router(directory.router, prefix=api_prefix)
     app.include_router(webhooks.router, prefix=api_prefix)
+    app.include_router(tasks.router, prefix=api_prefix)
+    app.include_router(tasks.stream_router, prefix=api_prefix)
+    app.include_router(providers.router, prefix=api_prefix)
+    app.include_router(projects.router, prefix=api_prefix)
+    app.include_router(assets.router, prefix=api_prefix)
+    app.include_router(campaigns.router, prefix=api_prefix)
+    app.include_router(approvals.router, prefix=api_prefix)
+    app.include_router(missions.router, prefix=api_prefix)
+    app.include_router(clients.router, prefix=api_prefix)
+    app.include_router(templates.router, prefix=api_prefix)
+    app.include_router(routines.router, prefix=api_prefix)
+    app.include_router(research.router, prefix=api_prefix)
+    app.include_router(connectors.router, prefix=api_prefix)
+    app.include_router(mcp.router, prefix=api_prefix)
+    app.include_router(teammates.router, prefix=api_prefix)
+    app.include_router(talk.router, prefix=api_prefix)
 
     _mount_frontend(app, api_prefix)
 

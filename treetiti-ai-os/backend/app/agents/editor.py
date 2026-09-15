@@ -10,29 +10,14 @@ from __future__ import annotations
 from typing import Any
 
 from app.agents.base import BaseAgent
-
-EDITOR_RUBRIC = """\
-Evaluate every deliverable on 5 criteria (score 1-10 each):
-  1. accuracy      — facts, claims, data are correct; no invented specifics
-  2. voice_consistency — matches the brand voice (premium, minimal, confident)
-  3. clarity       — easy to understand, no jargon bloat
-  4. engagement    — strong hook, clear flow, compelling CTA
-  5. seo_readiness — keywords, structure, and meta-friendly layout
-
-Decision rule: if any criterion scores below 7 -> REJECT with revision notes.
-Flag AI hallucinations or generic fluff immediately.
-VETO power: nothing ships unless status == approved.
-"""
+from app.agents.prompts.editor import SYSTEM_PROMPT
 
 
 class EditorAgent(BaseAgent):
     model = "opencode/deepseek-v4-flash-free"
     name = "Editor / QA Agent"
     role = "chief editor and quality-assurance lead"
-    system_prompt = (
-        "You are the final quality gate for TREEtiti. Nothing is approved for "
-        "delivery without your sign-off. " + EDITOR_RUBRIC
-    )
+    system_prompt = SYSTEM_PROMPT
 
     def run(
         self,

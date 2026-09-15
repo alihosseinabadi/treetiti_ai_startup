@@ -24,6 +24,8 @@ from app.agents.base import BaseAgent
 from app.database import SessionLocal
 from app.models import DebugReport
 
+from app.agents.prompts.developer import SYSTEM_PROMPT
+
 logger = logging.getLogger("treetiti.agents.developer")
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -68,13 +70,7 @@ class SoftwareEngineerAgent(BaseAgent):
     model = "zai/glm-4.7-flash"  # strongest verified free reasoning, good for code
     name = "Software Engineer Agent"
     role = "senior software engineer and systems architect"
-    system_prompt = """\
-You are TREEtiti's senior software engineer. You debug real issues in this
-Python/FastAPI codebase and design new systems for the team. You read actual
-source code, find the real root cause, and propose concrete, minimal fixes.
-You never invent files or APIs that do not exist. You prefer surgical changes
-over rewrites. When designing systems you give a build plan with specific
-files to create or change."""
+    system_prompt = SYSTEM_PROMPT
     fallback_model = "opencode/deepseek-v4-flash-free"
 
     # ------------------------------------------------------------------

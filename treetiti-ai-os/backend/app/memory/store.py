@@ -249,6 +249,8 @@ def store_memory(
     title: str = "",
     source: str = "chat",
     tag: str = "",
+    scope: str = "global",
+    scope_id: str = "",
 ) -> str:
     """Persist a piece of long-term memory with an embedding for RAG recall."""
     with SessionLocal() as db:
@@ -258,6 +260,8 @@ def store_memory(
             content=content,
             source=source,
             tag=tag,
+            scope=scope,
+            scope_id=scope_id,
             embedding=embed_text(content),
         )
         db.add(entry)
@@ -266,12 +270,16 @@ def store_memory(
         return entry.id
 
 
-def search_memory(query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+def search_memory(query: str, kind: str | None = None, limit: int = 5, scope: str | None = None, scope_id: str | None = None) -> list[dict]:
     """Semantic (RAG) search over memory entries. Falls back to text matching."""
     with SessionLocal() as db:
         stmt = select(MemoryEntry).order_by(MemoryEntry.created_at.desc())
         if kind:
             stmt = stmt.where(MemoryEntry.kind == kind)
+        if scope:
+            stmt = stmt.where(MemoryEntry.scope == scope)
+        if scope_id:
+            stmt = stmt.where(MemoryEntry.scope_id == scope_id)
         rows = db.execute(stmt.limit(limit * 4)).scalars().all()
 
         query_emb = embed_text(query) if _fast_embeddings() else None
@@ -312,7 +320,6 @@ def remember_conversation(role: str, content: str, source: str = "chat") -> str 
     text = content.strip()
     if len(text) < 60:
         return None  # too short to be a durable memory
-
     triggers = (
         "we want", "we need", "our goal", "the goal is", "objective",
         "i want", "i need", "remember", "important", "always", "never",
@@ -323,3 +330,120 @@ def remember_conversation(role: str, content: str, source: str = "chat") -> str 
         return None
     kind = "goal" if any(t in text.lower() for t in ("goal", "objective", "we need", "our goal")) else "preference"
     return store_memory(text, kind=kind, title=text[:80], source=source)
+
+
+def delete_memory(memory_id: str) -> bool:
+    """Remove a stored memory entry by id. Returns True if deleted."""
+    from sqlalchemy import delete as sa_delete
+
+    with SessionLocal() as db:
+        result = db.execute(sa_delete(MemoryEntry).where(MemoryEntry.id == memory_id))
+        db.commit()
+        return result.rowcount > 0
+
+
+def find_memory_to_forget(query: str, limit: int = 3) -> list[dict]:
+    """Best-effort lookup of the memory the user most likely wants to forget."""
+    return search_memory(query, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Scoped memory convenience functions
+# ---------------------------------------------------------------------------
+
+def store_global_memory(content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="global")
+
+def store_client_memory(client_name: str, content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="client", scope_id=client_name)
+
+def store_team_memory(team_id: str, content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="team", scope_id=team_id)
+
+def store_teammate_memory(teammate_id: str, content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="teammate", scope_id=teammate_id)
+
+def store_project_memory(project_id: str, content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="project", scope_id=project_id)
+
+def store_conversation_memory(session_id: str, content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="conversation", scope_id=session_id)
+
+def store_task_memory(task_id: str, content: str, kind: str = "fact", title: str = "", source: str = "chat", tag: str = "") -> str:
+    return store_memory(content, kind, title, source, tag, scope="task", scope_id=task_id)
+
+
+def search_global_memory(query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="global")
+
+def search_client_memory(client_name: str, query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="client", scope_id=client_name)
+
+def search_team_memory(team_id: str, query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="team", scope_id=team_id)
+
+def search_teammate_memory(teammate_id: str, query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="teammate", scope_id=teammate_id)
+
+def search_project_memory(project_id: str, query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="project", scope_id=project_id)
+
+def search_conversation_memory(session_id: str, query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="conversation", scope_id=session_id)
+
+def search_task_memory(task_id: str, query: str, kind: str | None = None, limit: int = 5) -> list[dict]:
+    return search_memory(query, kind, limit, scope="task", scope_id=task_id)
+
+
+# ---------------------------------------------------------------------------
+# Cross-session chat recall (remember ALL chats, not just the current one)
+# ---------------------------------------------------------------------------
+
+def search_chat_history(query: str, exclude_session_id: str = "", limit: int = 5) -> list[dict]:
+    """Recall relevant past conversations from ALL chat sessions.
+
+    The chat brain should remember what was discussed in any earlier session,
+    not just the one it is currently in. This scans every non-archived session's
+    messages and returns the most relevant exchanges for the current question.
+
+    Returns: [{session_id, title, session_updated_at, excerpt, score}]
+    """
+    from app.models import ChatSession
+
+    with SessionLocal() as db:
+        rows = (
+            db.query(ChatSession)
+            .filter(ChatSession.archived.is_(False))
+            .order_by(ChatSession.updated_at.desc())
+            .limit(limit * 6)
+            .all()
+        )
+        query_emb = embed_text(query) if _fast_embeddings() else None
+        scored: list[tuple[float, ChatSession, str]] = []
+        for s in rows:
+            if s.id == exclude_session_id:
+                continue
+            for m in (s.messages or []):
+                if not isinstance(m, dict) or not m.get("content"):
+                    continue
+                text = str(m["content"])
+                if len(text) < 20 or len(text) > 4000:
+                    continue
+                if query_emb:
+                    sim = _cosine(query_emb, m.get("embedding") or []) if m.get("embedding") else _text_sim(query, text)
+                else:
+                    sim = _text_sim(query, text)
+                if sim > 0.05:
+                    excerpt = text if len(text) <= 220 else text[:220] + "…"
+                    scored.append((sim, s, excerpt))
+        scored.sort(key=lambda t: t[0], reverse=True)
+        return [
+            {
+                "session_id": s.id,
+                "title": s.title,
+                "session_updated_at": s.updated_at.isoformat() if s.updated_at else "",
+                "excerpt": excerpt,
+                "score": round(score, 4),
+            }
+            for score, s, excerpt in scored[:limit]
+        ]

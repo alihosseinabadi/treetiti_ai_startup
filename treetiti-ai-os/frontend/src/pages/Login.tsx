@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { useAuth } from "../App";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth";
 import { ErrorBanner } from "../components/ui";
 
 export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("aalleeiiii");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +17,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(email, password);
+      navigate("/", { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -23,22 +26,22 @@ export default function Login() {
   };
 
   return (
-    <div className="h-full grid place-items-center bg-gradient-to-b from-zinc-950 via-zinc-950 to-emerald-950/30">
+    <div className="h-full grid place-items-center bg-bg-primary">
       <form
         onSubmit={submit}
-        className="w-full max-w-sm rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-8 space-y-5 backdrop-blur"
+        className="w-full max-w-sm rounded-2xl border border-border bg-bg-secondary p-8 space-y-5 shadow-2xl"
       >
         <div>
-          <div className="text-lg font-semibold tracking-widest text-white">
-            TREE<span className="text-emerald-400">titi</span>
+          <div className="font-display text-xl font-bold tracking-widest text-text-primary">
+            TREE<span className="text-accent">titi</span>
           </div>
-          <p className="text-sm text-zinc-500 mt-1">AI Marketing OS — demo sign in (no password)</p>
+          <p className="text-sm text-text-muted mt-1">AI Operating System — demo sign in (no password)</p>
         </div>
 
         <ErrorBanner message={error} />
 
         <div className="space-y-2">
-          <label className="block text-xs text-zinc-400" htmlFor="email">
+          <label className="block text-xs text-text-muted" htmlFor="email">
             Email
           </label>
           <input
@@ -46,12 +49,12 @@ export default function Login() {
             type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+            className="w-full rounded-xl border border-border bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none focus:border-accent focus:shadow-[0_0_0_3px_rgba(122,162,247,0.12)] transition-all"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs text-zinc-400" htmlFor="password">
+          <label className="block text-xs text-text-muted" htmlFor="password">
             Password (optional in demo mode)
           </label>
           <input
@@ -59,14 +62,14 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+            className="w-full rounded-xl border border-border bg-bg-tertiary px-3 py-2.5 text-sm text-text-primary outline-none focus:border-accent focus:shadow-[0_0_0_3px_rgba(122,162,247,0.12)] transition-all"
           />
         </div>
 
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 transition disabled:opacity-50"
+          className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-bold text-bg-primary shadow-lg shadow-accent/20 hover:bg-accent-hover transition disabled:opacity-50"
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>

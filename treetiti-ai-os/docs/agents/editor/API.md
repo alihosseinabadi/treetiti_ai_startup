@@ -1,0 +1,46 @@
+# QA / Brand Guardian — API reference
+
+Agent key: `editor` · routed model: `router/kimchi/minimax-m3`
+
+## 1. REST — run on the background queue
+
+```bash
+curl -X POST $BASE/api/v1/agents/run \
+  -H 'Authorization: Bearer $TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"agent": "editor","payload": {"brief": "…"}}'
+```
+
+Returns `{agent, task_id, status}` immediately; the agent runs on the worker thread and progress streams on the global SSE feed (`/stream`) and on `GET /api/v1/tasks/{id}/events`.
+
+## 2. Poll the result
+
+```bash
+curl $BASE/api/v1/tasks/$TASK_ID -H 'Authorization: Bearer $TOKEN'
+```
+
+Statuses: `queued → running → completed | failed | cancelled`. On completion `result` holds the agent's output dict.
+
+## 3. From chat
+
+- `/agent editor <prompt>` — runs it live in a chat session.
+- The CEO delegates to it when a brief matches its specialty.
+- The scheduler runs it on a cadence via `scheduler.HANDLERS`.
+
+## 4. Accepts
+
+- `content` (default `''`)
+- `brand_voice` (default `''`)
+- `deliverable_type` (default `'post'`)
+- `platform` (default `'any'`)
+
+## 5. Example payload
+
+```json
+{
+  "agent": "editor",
+  "payload": {
+    "brief": "…"
+  }
+}
+```

@@ -19,6 +19,8 @@ from app.database import SessionLocal
 from app.memory.store import search_brand_memory, search_content_memory, store_content_memory
 from app.models import ContentItem
 
+from app.agents.prompts.content import SYSTEM_PROMPT
+
 PLATFORMS = ["linkedin", "instagram", "tiktok", "blog"]
 
 DRAFTS_DIR = Path(__file__).resolve().parents[2] / "drafts"
@@ -54,11 +56,7 @@ class ContentCreationAgent(BaseAgent):
     model = "opencode/deepseek-v4-flash-free"  # verified free, structured output
     name = "Content Creation Agent"
     role = "creative content strategist"
-    system_prompt = """\
-You create world-class marketing content for TREEtiti, a premium AI agency.
-Your style is Apple/Linear/Stripe: minimal, confident, premium, B2B.
-Every piece must have: a strong hook, a clear main idea, a CTA, a target
-audience, the platform it is for, and a visual recommendation."""
+    system_prompt = SYSTEM_PROMPT
 
     def run(
         self,
@@ -67,12 +65,17 @@ audience, the platform it is for, and a visual recommendation."""
         count: int = 1,
         approve: bool = True,
         insight_brief: dict[str, Any] | None = None,
+        revision_notes: list[str] | None = None,
+        previous: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         """Generate `count` content items for a platform.
 
         `opportunity` comes from the Research Agent. `insight_brief` comes from
         the Analytics Agent's `analyze_research()` — when present it is the
         primary creative input (analyst-derived, brand-gated).
+
+        When `revision_notes` is given the agent REVISES the `previous` items
+        against the editor's notes instead of drafting from scratch (QA loop).
         """
         memory = search_brand_memory("TREEtiti services positioning", limit=4)
         memory_block = "\n".join(f"- {m['title']}: {m['content']}" for m in memory)
@@ -92,6 +95,19 @@ audience, the platform it is for, and a visual recommendation."""
             else:
                 insight_block = str(insight)
 
+        revision_block = ""
+        if revision_notes:
+            revision_block = (
+                "REVISION NOTES FROM THE EDITOR (must fix ALL of these):\n"
+                + "\n".join(f"- {n}" for n in revision_notes)
+            )
+        previous_block = ""
+        if previous:
+            previous_block = (
+                "PREVIOUS DRAFT (revise this, don't start over):\n"
+                + json.dumps(previous, ensure_ascii=False)
+            )
+
         prompt = f"""Generate {count} TREEtiti {platform} content piece(s).
 
 BRAND MEMORY:
@@ -103,6 +119,10 @@ ALREADY PUBLISHED (avoid repeating these ideas):
 {('ANALYST INSIGHT BRIEF (primary input — build on this):\n' + insight_block) if insight_block else ""}
 
 {('TODAYS OPPORTUNITY:\n' + json.dumps(opportunity, ensure_ascii=False)) if opportunity and not insight_brief else ""}
+
+{revision_block}
+
+{previous_block}
 
 For each piece respond with an item in this exact structure:
 {{

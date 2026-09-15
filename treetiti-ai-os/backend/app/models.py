@@ -8,6 +8,7 @@ PostgreSQL + pgvector. Covers:
 - chat sessions
 - research opportunities
 - image prompts / video concepts
+- projects / media assets / approvals (human-in-the-loop)
 """
 
 from __future__ import annotations
@@ -80,6 +81,8 @@ class MemoryEntry(Base):
     content: Mapped[str] = mapped_column(Text)  # the memory to retrieve later
     source: Mapped[str] = mapped_column(String(64), default="chat")  # chat | telegram | api | manual
     tag: Mapped[str] = mapped_column(String(64), default="")  # optional extra tag
+    scope: Mapped[str] = mapped_column(String(32), index=True, default="global")  # global | client | team | teammate | project | conversation | task
+    scope_id: Mapped[str] = mapped_column(String(36), index=True, default="")  # client name, team id, project id, etc.
     embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -163,6 +166,24 @@ class ResearchOpportunity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class ResearchReport(Base):
+    __tablename__ = "research_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    client: Mapped[str] = mapped_column(String(255), default="")
+    topic: Mapped[str] = mapped_column(String(255), default="")
+    depth: Mapped[str] = mapped_column(String(16), default="deep")  # quick | deep
+    status: Mapped[str] = mapped_column(String(16), default="completed")  # completed | failed
+    summary: Mapped[str] = mapped_column(Text, default="")
+    findings: Mapped[list] = mapped_column(JSON, default=list)
+    insights: Mapped[list] = mapped_column(JSON, default=list)
+    recommendations: Mapped[list] = mapped_column(JSON, default=list)
+    sources: Mapped[list] = mapped_column(JSON, default=list)
+    report_md: Mapped[str] = mapped_column(Text, default="")
+    meta: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class Lead(Base):
     __tablename__ = "leads"
 
@@ -181,9 +202,40 @@ class Lead(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class Connector(Base):
+    __tablename__ = "connectors"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # slug
+    name: Mapped[str] = mapped_column(String(255), default="")
+    category: Mapped[str] = mapped_column(String(64), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    capabilities: Mapped[list] = mapped_column(JSON, default=list)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    configured: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_status: Mapped[str] = mapped_column(String(16), default="missing")  # missing | configured | ok | error
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    last_checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class McpServer(Base):
+    __tablename__ = "mcp_servers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255), default="")
+    transport: Mapped[str] = mapped_column(String(16), default="stdio")  # stdio | sse | http
+    command: Mapped[str] = mapped_column(String(255), default="")
+    args: Mapped[list] = mapped_column(JSON, default=list)
+    url: Mapped[str] = mapped_column(String(512), default="")
+    tools: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(String(16), default="registered")  # registered | reachable | unreachable
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    last_checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
 class AnalyticsSnapshot(Base):
     __tablename__ = "analytics_snapshots"
-
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     date: Mapped[str] = mapped_column(String(16), index=True)  # YYYY-MM-DD
     report: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -196,8 +248,34 @@ class ChatSession(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     title: Mapped[str] = mapped_column(String(255), default="New conversation")
     messages: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    context: Mapped[str] = mapped_column(String(64), default="")  # "tree" | "customer:<name>"
+    project_id: Mapped[str] = mapped_column(String(36), default="")  # optional project association
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)  # soft delete
+    session_state: Mapped[dict] = mapped_column(JSON, default=dict)  # agentic checkpoints/workflow state (Phase 7)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class PendingDecision(Base):
+    """A business question TREEtiti stopped the workflow to ask (Phase 7).
+
+    Agentic ask-back: the main chat keeps working autonomously but pauses for
+    the ONE human decision it can't make (audience, channel, budget, approve).
+    The question survives browser closes; answering resumes the workflow from
+    its checkpoint — it never restarts.
+    """
+
+    __tablename__ = "pending_decisions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(String(36), default="")
+    question: Mapped[str] = mapped_column(Text, default="")
+    options: Mapped[list[str]] = mapped_column(JSON, default=list)  # human choices, e.g. ["Daily", "3x/week", "Weekly"]
+    answer: Mapped[str] = mapped_column(Text, default="")  # the user's choice
+    status: Mapped[str] = mapped_column(String(16), default="open")  # open | answered | expired
+    workflow: Mapped[dict] = mapped_column(JSON, default=dict)  # what to resume (project/mission/checkpoint data)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class DebugReport(Base):
@@ -217,32 +295,21 @@ class DebugReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
-class BattleVote(Base):
-    """A user's vote in an arena battle between two models."""
-
-    __tablename__ = "battle_votes"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    session_id: Mapped[str] = mapped_column(String(36), index=True)
-    turn_index: Mapped[int] = mapped_column(Integer, default=0)
-    model_a: Mapped[str] = mapped_column(String(255))
-    model_b: Mapped[str] = mapped_column(String(255))
-    winner: Mapped[str] = mapped_column(String(255))  # model the user picked
-    judge_winner: Mapped[str] = mapped_column(String(255), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-
-
 class ScheduledJob(Base):
     """A recurring agent task the autopilot runs at a fixed time or interval."""
 
     __tablename__ = "scheduled_jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255), default="")
     agent: Mapped[str] = mapped_column(String(64), index=True)  # agent key, e.g. "content"
     job_type: Mapped[str] = mapped_column(String(16), default="daily")  # daily | interval
     schedule_time: Mapped[str] = mapped_column(String(16), default="09:00")  # HH:MM for daily
     interval_minutes: Mapped[int] = mapped_column(Integer, default=60)  # for interval
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    client: Mapped[str] = mapped_column(String(255), default="")
+    project_id: Mapped[str] = mapped_column(String(36), default="")
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -262,43 +329,6 @@ class AgentRun(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
-
-
-class ArenaModel(Base):
-    """A model in the self-driving arena — Elo-ranked by automatic battles.
-
-    The arena discovers every model exposed by `opencode`, runs judge-evaluated
-    battles between the champion and challengers in the background, and the
-    system automatically routes all AI work to the current #1 model.
-    """
-
-    __tablename__ = "arena_models"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    model: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    provider: Mapped[str] = mapped_column(String(32), default="opencode")  # opencode | zai | ollama
-    elo: Mapped[float] = mapped_column(Float, default=1000.0)
-    wins: Mapped[int] = mapped_column(Integer, default=0)
-    losses: Mapped[int] = mapped_column(Integer, default=0)
-    battles: Mapped[int] = mapped_column(Integer, default=0)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    last_battle_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class ArenaBattle(Base):
-    """A single judge-evaluated battle in the self-driving arena."""
-
-    __tablename__ = "arena_battles"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    model_a: Mapped[str] = mapped_column(String(255))
-    model_b: Mapped[str] = mapped_column(String(255))
-    winner: Mapped[str] = mapped_column(String(255))
-    question: Mapped[str] = mapped_column(Text, default="")
-    judge: Mapped[str] = mapped_column(Text, default="")
-    automatic: Mapped[bool] = mapped_column(Boolean, default=True)  # True = self-driven eval
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class ClientProfile(Base):
@@ -325,3 +355,369 @@ class ClientProfile(Base):
     error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class TaskRecord(Base):
+    """A unit of long-running work in the queue (spec §2, §21).
+
+    Mirrors the in-process ``TaskQueue`` task; persisted so completed work
+    survives restarts and is queryable from the UI.
+    """
+
+    __tablename__ = "tasks"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    kind: Mapped[str] = mapped_column(String(32), index=True, default="generic")
+    label: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(32), index=True, default="queued")
+    #   queued | running | completed | failed | cancelled
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    error: Mapped[str] = mapped_column(Text, default="")
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    workflow_id: Mapped[str] = mapped_column(String(36), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TaskEvent(Base):
+    """A progress event emitted while a task ran (spec §16, §21).
+
+    The SSE stream for a finished task is replayed from here.
+    """
+
+    __tablename__ = "task_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    task_id: Mapped[str] = mapped_column(String(36), index=True)
+    event_type: Mapped[str] = mapped_column(String(64), index=True)  # task.started | agent.started | ...
+    source: Mapped[str] = mapped_column(String(64), default="")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    correlation_id: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ProviderRecord(Base):
+    """A model provider (spec §21). Metadata mirrors core/provider_capability.py."""
+
+    __tablename__ = "providers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    prefix: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(128), default="")
+    capabilities: Mapped[list[str]] = mapped_column(JSON, default=list)  # [llm, image, video, ...]
+    cost_tier: Mapped[str] = mapped_column(String(16), default="free")  # free | paid
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    base_url: Mapped[str] = mapped_column(String(512), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ProviderHealth(Base):
+    """Latest health probe result for a provider (spec §21)."""
+
+    __tablename__ = "provider_health"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    model: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(16), default="unknown")  # ok | degraded | down | unknown
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str] = mapped_column(Text, default="")
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ProviderUsage(Base):
+    """Daily per-provider request/spend usage (spec §21, plan §K cost guardrail)."""
+
+    __tablename__ = "provider_usage"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    provider: Mapped[str] = mapped_column(String(32), index=True)
+    date: Mapped[str] = mapped_column(String(16), index=True)  # YYYY-MM-DD
+    requests: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_in: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_out: Mapped[int] = mapped_column(Integer, default=0)
+    estimated_cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Project(Base):
+    """A client initiative bundling campaigns -> content -> assets.
+
+    The top-level unit a human plans against: a project owns several
+    campaigns, which in turn own content items and media assets.
+    """
+
+    __tablename__ = "projects"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255))
+    client: Mapped[str] = mapped_column(String(255), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(32), default="active")  # active | paused | archived
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class MediaAsset(Base):
+    """A media asset produced by an agent (image/video/3D/audio).
+
+    Tracks the creating agent, the model, the exact prompt and a version so
+    the assets workspace can browse/reuse past production.
+    """
+
+    __tablename__ = "media_assets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    kind: Mapped[str] = mapped_column(String(16), index=True)  # image | video | 3d | audio
+    title: Mapped[str] = mapped_column(String(255), default="")
+    creator_agent: Mapped[str] = mapped_column(String(64), default="")
+    model: Mapped[str] = mapped_column(String(128), default="")
+    prompt: Mapped[str] = mapped_column(Text, default="")
+    url: Mapped[str] = mapped_column(String(512), default="")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    project_id: Mapped[str] = mapped_column(String(36), default="")
+    session_id: Mapped[str] = mapped_column(String(36), default="")  # originating chat session
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Mission(Base):
+    """A persistent per-client marketing mission (autonomous company, §6-§14).
+
+    The unit of autonomy: one mission = one client workspace that the OS
+    keeps alive in the background. Status gates whether the autonomous loop
+    runs scheduled cycles for it. ``workspace`` is the progressive state
+    machine — intel → strategy → calendar → content → assets → results —
+    revealed to the UI as it fills up. ``config`` holds per-client cadence,
+    platforms, competitors and brand notes.
+    """
+
+    __tablename__ = "missions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255))
+    client: Mapped[str] = mapped_column(String(255), default="")
+    goal: Mapped[str] = mapped_column(Text, default="")  # what this mission must achieve
+    source_template: Mapped[str] = mapped_column(String(64), default="")  # template id that installed it (Phase 3)
+    status: Mapped[str] = mapped_column(String(32), default="active")  # active | paused | archived
+    cadence: Mapped[str] = mapped_column(String(16), default="daily")  # daily | weekly
+    daily_time: Mapped[str] = mapped_column(String(16), default="08:30")  # HH:MM observe/analyze
+    weekly_day: Mapped[str] = mapped_column(String(16), default="monday")  # full-cycle day
+    config: Mapped[dict] = mapped_column(JSON, default=dict)  # platforms, competitors, audience, brand_notes
+    workspace: Mapped[dict] = mapped_column(JSON, default=dict)  # progressive state (intel/strategy/...)
+    current_cycle: Mapped[str] = mapped_column(String(32), default="")  # last cycle type
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_daily_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_weekly_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    instruction: Mapped[str] = mapped_column(Text, default="")  # live user steer (§15)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class MissionRun(Base):
+    """A single autonomous cycle executed for a mission (audit trail)."""
+
+    __tablename__ = "mission_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    mission_id: Mapped[str] = mapped_column(String(36), index=True)
+    cycle_type: Mapped[str] = mapped_column(String(32), default="daily")  # daily | weekly | event | manual
+    status: Mapped[str] = mapped_column(String(32), default="running")  # running | completed | failed
+    summary: Mapped[str] = mapped_column(Text, default="")
+    result: Mapped[dict] = mapped_column(JSON, default=dict)
+    error: Mapped[str] = mapped_column(Text, default="")
+    task_id: Mapped[str] = mapped_column(String(64), default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Approval(Base):
+    """A human-in-the-loop approval gate (spec §18).
+
+    Agents request approval before publishing/spending/importantly-deleting;
+    a human reviews and either approves (then the referenced action runs) or
+    rejects (then the agent is told to revise).
+    """
+
+    __tablename__ = "approvals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    kind: Mapped[str] = mapped_column(String(32), index=True)  # publish | spend | delete | edit
+    title: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str] = mapped_column(Text, default="")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | approved | rejected
+    requested_by: Mapped[str] = mapped_column(String(64), default="")
+    reviewed_by: Mapped[str] = mapped_column(String(64), default="")
+    decision_note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentInstruction(Base):
+    """A persistent custom instruction the owner gave an agent (Phase 6).
+
+    One row per agent key. Injected verbatim into the agent's system prompt at
+    run time, so the team obeys it across chat, missions, schedules and the
+    CEO's delegations until it is changed or cleared.
+    """
+
+    __tablename__ = "agent_instructions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    agent: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    instruction: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class Teammate(Base):
+    """A persistent AI teammate (Grok-style bot).
+
+    A teammate is a configured agent persona with tools, memory access,
+    autonomy level, and client/project permissions. Unlike a raw agent key,
+    a teammate is a named, persistent entity the user hires and manages.
+    """
+
+    __tablename__ = "teammates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    role: Mapped[str] = mapped_column(String(64), default="")  # e.g. "Researcher", "Copywriter"
+    agent_key: Mapped[str] = mapped_column(String(64), index=True)  # maps to AGENTS registry
+    avatar: Mapped[str] = mapped_column(String(8), default="🤖")  # emoji or icon
+    description: Mapped[str] = mapped_column(Text, default="")
+    system_instructions: Mapped[str] = mapped_column(Text, default="")  # custom prompt
+    model: Mapped[str] = mapped_column(String(128), default="")  # override model
+    tools: Mapped[list[str]] = mapped_column(JSON, default=list)  # enabled tool keys
+    skills: Mapped[list[str]] = mapped_column(JSON, default=list)  # skill tags
+    memory_scopes: Mapped[list[str]] = mapped_column(JSON, default=list)  # global|client|team|project|conversation
+    client_access: Mapped[list[str]] = mapped_column(JSON, default=list)  # client names or ["*"]
+    project_access: Mapped[list[str]] = mapped_column(JSON, default=list)  # project ids or ["*"]
+    autonomy_level: Mapped[str] = mapped_column(String(32), default="ask")  # ask | independent | full
+    routines: Mapped[list[str]] = mapped_column(JSON, default=list)  # routine IDs
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class Team(Base):
+    """A persistent team of teammates with a Chief coordinator."""
+
+    __tablename__ = "teams"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    chief_id: Mapped[str] = mapped_column(String(36), nullable=True)  # Teammate ID
+    member_ids: Mapped[list[str]] = mapped_column(JSON, default=list)  # Teammate IDs
+    client_access: Mapped[list[str]] = mapped_column(JSON, default=list)
+    project_access: Mapped[list[str]] = mapped_column(JSON, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class TeammateActivity(Base):
+    """Activity log for a teammate (what they did, when, with what result)."""
+
+    __tablename__ = "teammate_activity"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    teammate_id: Mapped[str] = mapped_column(String(36), index=True)
+    task_id: Mapped[str] = mapped_column(String(36), index=True, default="")
+    action: Mapped[str] = mapped_column(String(64), default="")  # research, write, generate, delegate, etc.
+    status: Mapped[str] = mapped_column(String(32), default="completed")  # running | completed | failed
+    input_summary: Mapped[str] = mapped_column(Text, default="")
+    output_summary: Mapped[str] = mapped_column(Text, default="")
+    activity_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Routine(Base):
+    """A reusable workflow/skill that can be triggered on schedule or manually."""
+
+    __tablename__ = "routines"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    trigger: Mapped[str] = mapped_column(String(32), default="manual")  # manual | schedule | event
+    schedule: Mapped[str] = mapped_column(String(128), default="")  # cron or interval
+    teammate_id: Mapped[str] = mapped_column(String(36), nullable=True)  # assigned teammate
+    team_id: Mapped[str] = mapped_column(String(36), nullable=True)  # or team
+    instructions: Mapped[str] = mapped_column(Text, default="")
+    tools: Mapped[list[str]] = mapped_column(JSON, default=list)
+    inputs: Mapped[dict] = mapped_column(JSON, default=dict)
+    outputs: Mapped[dict] = mapped_column(JSON, default=dict)
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class ApprovalRequest(Base):
+    """A human-in-the-loop approval for consequential actions."""
+
+    __tablename__ = "approval_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    teammate_id: Mapped[str] = mapped_column(String(36), index=True)
+    task_id: Mapped[str] = mapped_column(String(36), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(32), index=True)  # publish | spend | delete | external | data
+    risk_level: Mapped[str] = mapped_column(String(16), default="medium")  # low | medium | high
+    title: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str] = mapped_column(Text, default="")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending | approved | rejected | expired
+    requested_by: Mapped[str] = mapped_column(String(64), default="")
+    reviewed_by: Mapped[str] = mapped_column(String(64), default="")
+    decision_note: Mapped[str] = mapped_column(Text, default="")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TalkRoom(Base):
+    """A War Room: a live multi-agent chat where bots talk to each other
+    and the owner can jump in, ping a bot, or kick a fresh round."""
+
+    __tablename__ = "talk_rooms"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    topic: Mapped[str] = mapped_column(Text, default="")  # the mission / question on the table
+    mode: Mapped[str] = mapped_column(String(32), default="groq")  # groq | opencode
+    thinking: Mapped[str] = mapped_column(String(32), default="deep")  # plain | deep | super
+    speaker_keys: Mapped[list[str]] = mapped_column(JSON, default=list)  # agent registry keys, order = talk order
+    chief_id: Mapped[str] = mapped_column(String(36), nullable=True)  # Teammate ID of the chief (optional)
+    team_id: Mapped[str] = mapped_column(String(36), nullable=True)
+    client: Mapped[str] = mapped_column(String(128), default="")  # business context, e.g. customer name
+    status: Mapped[str] = mapped_column(String(32), default="idle")  # idle | round_running | paused
+    created_by: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class TalkMessage(Base):
+    """A single message inside a War Room. role = user | agent. When an agent
+    speaks it carries its agent_key; thinking_stages record the visible
+    super-thinking trail (draft → critique → refine) for that turn."""
+
+    __tablename__ = "talk_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    room_id: Mapped[str] = mapped_column(String(36), index=True)
+    role: Mapped[str] = mapped_column(String(16), index=True)  # user | agent | system
+    speaker_key: Mapped[str] = mapped_column(String(64), index=True, default="")  # agent key when role=agent
+    speaker_name: Mapped[str] = mapped_column(String(128), default="")
+    content: Mapped[str] = mapped_column(Text)
+    thinking_stages: Mapped[list[dict]] = mapped_column(JSON, default=list)  # [{stage, note}]
+    model: Mapped[str] = mapped_column(String(128), default="")  # which model spoke
+    addressed_to: Mapped[str] = mapped_column(String(128), default="")  # who this was addressed to
+    round_number: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, index=True)

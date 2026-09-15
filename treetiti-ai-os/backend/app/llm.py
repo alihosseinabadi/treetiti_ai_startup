@@ -14,13 +14,14 @@ Usage:
 
 from __future__ import annotations
 
-import concurrent.futures
 import json
 import logging
 import os
+import re
 import subprocess
 import threading
 import time
+import urllib.error
 import urllib.request
 from typing import Any
 
@@ -30,11 +31,25 @@ logger = logging.getLogger("treetiti.llm")
 
 
 # ---------------------------------------------------------------------------
-# Model health registry (arena auto-failover)
+# Model health registry (free-model chain failover)
 # ---------------------------------------------------------------------------
 
 _health_lock = threading.Lock()
 _model_failures: dict[str, int] = {}  # model -> consecutive failures
+_chain_guard = threading.local()  # re-entrancy guard for the free-model chain
+_CHAIN_CANDIDATE_TIMEOUT = 60  # seconds per model — Agnes reasoning model needs 30-60s
+
+
+def _chain_guard_set() -> bool:
+    return getattr(_chain_guard, "active", False)
+
+
+class _ChainGuard:
+    def __enter__(self):
+        _chain_guard.active = True
+
+    def __exit__(self, *a):
+        _chain_guard.active = False
 
 
 def _reset_health() -> None:
@@ -55,21 +70,19 @@ def _mark_success(model: str) -> None:
 
 def _is_unhealthy(model: str) -> bool:
     settings = get_settings()
-    if not settings.battle_failover:
-        return False
     with _health_lock:
-        return _model_failures.get(model, 0) >= settings.battle_failover_threshold
+        return _model_failures.get(model, 0) >= settings.failover_threshold
 
 
 def model_health() -> dict[str, dict]:
-    """Current consecutive-failure counts per arena model (for the dashboard)."""
+    """Current consecutive-failure counts per model (for the dashboard)."""
     settings = get_settings()
     with _health_lock:
-        failures = {m: _model_failures.get(m, 0) for m in (settings.battle_model_a, settings.battle_model_b)}
+        failures = dict(_model_failures)
     return {
         m: {
             "consecutive_failures": n,
-            "unhealthy": n >= settings.battle_failover_threshold,
+            "unhealthy": n >= settings.failover_threshold,
         }
         for m, n in failures.items()
     }
@@ -198,7 +211,38 @@ _PROVIDER_ENDPOINTS: dict[str, tuple[str, str]] = {
     "google": ("https://generativelanguage.googleapis.com/v1beta/openai/", "google_ai_studio_key"),
     "groq": ("https://api.groq.com/openai/v1", "groq_key"),
     "openrouter": ("https://openrouter.ai/api/v1", "openrouter_key"),
+    # DeepInfra (text/image/video), Agnes AI hub, and the local 9Router gateway —
+    # all OpenAI-compatible. Key from settings.agnes_key / router_key / deepinfra_key.
+    "deepinfra": ("https://api.deepinfra.com/v1/openai", "deepinfra_key"),
+    "agnes": ("https://apihub.agnes-ai.com/v1", "agnes_key"),
+    "router": ("http://127.0.0.1:20128/v1", "router_key"),
+    # GitHub Models (GPT-4.1 / Claude / DeepSeek free pool) — needs a PAT.
+    "ghm": ("https://models.github.ai/inference", "github_models_key"),
+    # NVIDIA NIM (Llama/Qwen/DeepSeek free on NVIDIA GPUs).
+    "nim": ("https://integrate.api.nvidia.com/v1", "nim_key"),
+    # Z.ai (GLM-4-Flash, free text + image).
+    "glm": ("https://api.z.ai/api/paas/v4", "zai_key"),
+    # Cloudflare Workers AI — base URL needs the account id (built below).
+    "cf": ("https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", "cf_key"),
 }
+
+
+def _loads_openai(text: str) -> dict[str, Any]:
+    """Parse an OpenAI-style response body.
+
+    The local 9Router gateway (and some proxies) append a trailing stream
+    marker (``data: [DONE]``) to a normal JSON response — harmless, but it makes
+    a plain ``json.loads`` throw ``Extra data``. Fall back to the first balanced
+    JSON object when the raw body does not parse cleanly.
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find("{")
+        end = text.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise
+        return json.loads(text[start : end + 1])
 
 
 def _openai_compatible(
@@ -215,6 +259,20 @@ def _openai_compatible(
 
     settings = get_settings()
     base, key_field = _PROVIDER_ENDPOINTS[provider]
+    # Honor overridable base URLs from settings (Agnes hub, local 9Router,
+    # OpenRouter mirror/gateway).
+    if provider == "agnes":
+        base = settings.agnes_base_url
+    elif provider == "router":
+        base = settings.router_base_url
+    elif provider == "openrouter":
+        base = settings.openrouter_base_url
+    elif provider == "cf":
+        # Workers AI endpoint is namespaced per account:
+        # /client/v4/accounts/{ACCOUNT_ID}/ai/v1
+        if not settings.cf_account_id:
+            raise RuntimeError("cf account id not set (env CF_ACCOUNT_ID)")
+        base = base.replace("{account_id}", settings.cf_account_id)
     if not api_key:
         api_key = getattr(settings, key_field, "") or ""
     if not api_key:
@@ -223,7 +281,7 @@ def _openai_compatible(
         raise RuntimeError(f"{provider} daily rate limit reached for this key")
 
     url = base.rstrip("/") + "/chat/completions"
-    body = {
+    body: dict[str, Any] = {
         "model": model,
         "temperature": temperature,
         "messages": [
@@ -231,9 +289,19 @@ def _openai_compatible(
             {"role": "user", "content": prompt},
         ],
     }
+    # Agnes 2.5-pro is a reasoning model that burns tokens on
+    # reasoning_content before producing the final content. Without an
+    # explicit max_tokens the API may cap at a low default (e.g. 20)
+    # leaving content empty. Set a generous ceiling so the model has room
+    # to finish its chain-of-thought AND produce a real answer.
+    if provider == "agnes":
+        body["max_tokens"] = 4096
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
+        # Some providers (e.g. Groq) reject urllib's default python-urllib
+        # User-Agent with 403; send a browser-like UA so all endpoints accept us.
+        "User-Agent": "TREEtiti-AI-OS/1.0",
     }
     if provider == "openrouter":
         headers["HTTP-Referer"] = "https://treetiti.ai"
@@ -242,16 +310,89 @@ def _openai_compatible(
     req = urllib.request.Request(
         url, data=json.dumps(body).encode(), headers=headers, method="POST"
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        payload = json.loads(resp.read().decode())
+    # Optional VPN proxy for WAF/geo-blocked networks (mirrors TELEGRAM_PROXY).
+    proxy = settings.openrouter_proxy if provider == "openrouter" else ""
+    if proxy:
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+        )
+        with opener.open(req, timeout=timeout) as resp:
+            payload = _loads_openai(resp.read().decode())
+    else:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = _loads_openai(resp.read().decode())
     record_request(provider, api_key)
     try:
-        content = payload["choices"][0]["message"]["content"]
+        msg = payload["choices"][0]["message"]
+        content = msg.get("content", "")
+        # Agnes 2.5-pro is a reasoning model. In some cases (token budget
+        # exhausted during chain-of-thought) the API returns an empty
+        # ``content`` and the full reasoning in ``reasoning_content``. Use
+        # that as a graceful fallback so the chat never returns nothing.
+        if not content and msg.get("reasoning_content"):
+            content = msg["reasoning_content"]
     except (KeyError, IndexError, TypeError) as exc:  # noqa: BLE001
         raise RuntimeError(f"{provider} returned no content: {str(payload)[:300]}") from exc
     if not content:
         raise RuntimeError(f"{provider} returned empty response")
     return content.strip()
+
+
+def _dispatch_chain(
+    system: str, prompt: str, temperature: float, timeout: int, skip: str = ""
+) -> str | None:
+    """Try the free-model chain in order (strongest -> weakest) until one works.
+
+    Returns the first successful text, or None if every model in the chain
+    failed. Used as failover when an agent's primary model errors.
+
+    Re-entrancy guard: ``_dispatch_provider`` falls back into this chain when a
+    model errors, so without a guard a failing chain would recurse infinitely.
+    """
+    if _chain_guard_set():
+        return None
+    with _ChainGuard():
+        settings = get_settings()
+        # The keyless opencode CLI is the most reliable fallback (local, no
+        # network) — try it first when it's available and healthy, then walk
+        # the free models. Skip immediately when it has already failed enough
+        # times (the exit-code-1 loop wastes ~4-11s per attempt).
+        if _opencode_available() and not _is_unhealthy(settings.opencode_model):
+            try:
+                out = _dispatch_provider(
+                    system, prompt, settings.opencode_model, temperature, min(timeout, _CHAIN_CANDIDATE_TIMEOUT)
+                )
+                if out is not None:
+                    logger.warning("chain fallback used: %s", settings.opencode_model)
+                    _mark_success(settings.opencode_model)
+                    return out
+            except Exception as exc:  # noqa: BLE001
+                _mark_failure(settings.opencode_model)
+                logger.warning("chain opencode fallback failed: %s", str(exc)[:120])
+        for candidate in settings.free_model_chain:
+            if candidate == skip:
+                continue
+            if _is_unhealthy(candidate):
+                continue
+            # A dead/slow network must not stall the whole chain: each
+            # candidate gets a short budget so a down provider is skipped in
+            # seconds, not minutes, before the next fallback is tried.
+            try:
+                out = _dispatch_provider(
+                    system,
+                    prompt,
+                    candidate,
+                    temperature,
+                    min(timeout, _CHAIN_CANDIDATE_TIMEOUT),
+                )
+                if out is not None:
+                    logger.warning("chain fallback used: %s", candidate)
+                    _mark_success(candidate)
+                    return out
+            except Exception as exc:  # noqa: BLE001
+                _mark_failure(candidate)
+                logger.warning("chain model %s failed: %s", candidate, str(exc)[:120])
+        return None
 
 
 def _dispatch_provider(
@@ -264,6 +405,19 @@ def _dispatch_provider(
     """
     prefix, _, rest = model.partition("/")
     if prefix not in _PROVIDER_ENDPOINTS:
+        # The keyless opencode CLI is a valid chain member too — but it only
+        # understands its own model ids (opencode/...). Treat it like a provider
+        # so the chain can reach it without a separate full walk afterwards.
+        if prefix == "opencode":
+            if not _opencode_available():
+                return None
+            try:
+                out = _opencode_complete(system, prompt, model, temperature, timeout)
+                _mark_success(model)
+                return out
+            except Exception:
+                _mark_failure(model)
+                raise
         return None
     if prefix == "google":
         # Rotate across up to 3 Google keys on rate-limit / capacity.
@@ -288,10 +442,18 @@ def _dispatch_provider(
                         continue
                     raise
             raise RuntimeError("google all keys rejected with 429")
-        return _openai_compatible(
-            system, prompt, "google", resolved, temperature, timeout, api_key=keys[0]
-        )
-    return _openai_compatible(system, prompt, prefix, rest, temperature, timeout)
+        try:
+            return _openai_compatible(
+                system, prompt, "google", resolved, temperature, timeout, api_key=keys[0]
+            )
+        except Exception:  # noqa: BLE001  (fall through the free chain)
+            return _dispatch_chain(system, prompt, temperature, timeout, skip=model)
+    try:
+        return _openai_compatible(system, prompt, prefix, rest, temperature, timeout)
+    except Exception as exc:  # noqa: BLE001
+        # Primary provider/model failed -> walk the free chain automatically.
+        logger.warning("provider %s failed (%s) — trying free chain", prefix, str(exc)[:120])
+        return _dispatch_chain(system, prompt, temperature, timeout, skip=model)
 
 
 # ---------------------------------------------------------------------------
@@ -306,10 +468,41 @@ def generate_image(
     model: str | None = None,
     timeout: int = 120,
 ) -> bytes:
-    """Generate an image with Google's free Nano Banana (Gemini) image model.
+    """Generate an image. Returns raw PNG/JPEG bytes.
 
-    Returns raw image bytes. Raises RuntimeError if no key or the API fails.
+    Order of providers:
+      1. Google AI Studio (nano-banana-pro-preview) — needs key.
+      2. Agnes AI (agnes-image-2.1-flash) — needs AGNES_KEY (verified live).
+    Raises RuntimeError if every provider is unavailable.
     """
+    import base64
+
+    settings = get_settings()
+
+    # 1) Google (free Nano Banana) when a key exists.
+    if settings.google_ai_studio_key:
+        try:
+            return _generate_image_google(prompt, size=size, model=model, timeout=timeout)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("google image gen failed, falling back to agnes: %s", exc)
+
+    # 2) Agnes AI — OpenAI-compatible image endpoint (returns a download URL).
+    if settings.agnes_key:
+        return _generate_image_agnes(prompt, size=size, model=model, timeout=timeout)
+
+    raise RuntimeError(
+        "no image provider configured — set GOOGLE_AI_STUDIO_KEY or AGNES_KEY"
+    )
+
+
+def _generate_image_google(
+    prompt: str,
+    *,
+    size: str = "1024x1024",
+    model: str | None = None,
+    timeout: int = 120,
+) -> bytes:
+    """Generate an image with Google's free Nano Banana (Gemini) image model."""
     settings = get_settings()
     api_key = settings.google_ai_studio_key or ""
     if not api_key:
@@ -336,26 +529,162 @@ def generate_image(
 
     b64 = payload.get("data", [{}])[0].get("b64_json", "")
     if not b64:
-        raise RuntimeError(f"image API returned no data: {str(payload)[:300]}")
+        raise RuntimeError(f"google image API returned no data: {str(payload)[:300]}")
+    return base64.b64decode(b64)
+
+
+def _generate_image_agnes(
+    prompt: str,
+    *,
+    size: str = "1024x1024",
+    model: str | None = None,
+    timeout: int = 180,
+) -> bytes:
+    """Generate an image via Agnes AI. Agnes returns a download URL, so we fetch
+    the bytes ourselves. Returns raw image bytes.
+    """
     import base64
 
+    settings = get_settings()
+    api_key = settings.agnes_key or ""
+    if not api_key:
+        raise RuntimeError("AGNES_KEY not set — needed for image generation")
+    image_model = model or settings.agnes_image_model
+    url = settings.agnes_base_url.rstrip("/") + "/images/generations"
+    body = {
+        "model": image_model,
+        "prompt": prompt,
+        "n": 1,
+        "size": size,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:  # type: ignore[attr-defined]
+        detail = exc.read().decode(errors="replace")
+        raise RuntimeError(f"agnes image generation failed ({exc.code}): {detail[:300]}") from exc
+
+    img_url = payload.get("data", [{}])[0].get("url", "")
+    if img_url:
+        with urllib.request.urlopen(img_url, timeout=timeout) as resp:
+            return resp.read()
+
+    b64 = payload.get("data", [{}])[0].get("b64_json", "")
+    if not b64:
+        raise RuntimeError(f"agnes image API returned no data: {str(payload)[:300]}")
     return base64.b64decode(b64)
+
+
+# ---------------------------------------------------------------------------
+# Free video generation (Agnes Video V2.0 — asynchronous task API)
+# ---------------------------------------------------------------------------
+
+def generate_video(
+    prompt: str,
+    *,
+    model: str | None = None,
+    width: int = 1152,
+    height: int = 768,
+    num_frames: int = 121,
+    frame_rate: int = 24,
+    poll_interval: int = 5,
+    timeout: int = 600,
+) -> dict[str, Any]:
+    """Generate a video via Agnes Video V2.0 (async task API).
+
+    POST /v1/videos -> returns task_id/video_id (status "queued"), then we poll
+    GET /agnesapi?video_id=... until status == "completed" or timeout.
+
+    Returns dict with video_url, status, task_id, seconds, size. Raises
+    RuntimeError if no AGNES_KEY, the task fails, or generation times out.
+    """
+    settings = get_settings()
+    api_key = settings.agnes_key or ""
+    if not api_key:
+        raise RuntimeError("AGNES_KEY not set — needed for video generation")
+    video_model = model or "agnes-video-v2.0"
+    base = settings.agnes_base_url.rstrip("/")
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    # 1) Create the task.
+    create_url = base + "/videos"
+    body = {
+        "model": video_model,
+        "prompt": prompt,
+        "width": width,
+        "height": height,
+        "num_frames": num_frames,
+        "frame_rate": frame_rate,
+    }
+    req = urllib.request.Request(
+        create_url, data=json.dumps(body).encode(), headers=headers, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            created = json.loads(resp.read().decode())
+    except urllib.error.HTTPError as exc:  # type: ignore[attr-defined]
+        detail = exc.read().decode(errors="replace")
+        raise RuntimeError(f"agnes video task create failed ({exc.code}): {detail[:300]}") from exc
+    task_id = created.get("task_id") or created.get("id")
+    video_id = created.get("video_id")
+    if not task_id and not video_id:
+        raise RuntimeError(f"agnes video API returned no task id: {str(created)[:300]}")
+    logger.info("agnes video task queued: task_id=%s status=%s", task_id, created.get("status"))
+
+    # 2) Poll until completed.
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        time.sleep(poll_interval)
+        status = _agnes_video_status(video_id, task_id, headers, base)
+        if status is None:
+            continue
+        if status.get("status") == "completed":
+            video_url = status.get("remixed_from_video_id") or status.get("url") or status.get("video_url")
+            if not video_url:
+                # Some responses nest it in metadata.url.
+                video_url = (status.get("metadata") or {}).get("url", "")
+            return {
+                "video_url": video_url,
+                "status": "completed",
+                "task_id": task_id,
+                "video_id": video_id,
+                "seconds": status.get("seconds"),
+                "size": status.get("size"),
+            }
+        if status.get("status") == "failed":
+            raise RuntimeError(f"agnes video task failed: {status.get('error') or status}")
+
+    raise RuntimeError(f"agnes video generation timed out after {timeout}s (task {task_id})")
+
+
+def _agnes_video_status(
+    video_id: str | None, task_id: str | None, headers: dict, base: str
+) -> dict[str, Any] | None:
+    """Fetch one video-task status update. Returns None if the fetch hiccups."""
+    if video_id:
+        url = base.replace("/v1", "") + f"/agnesapi?video_id={video_id}"
+    else:
+        url = base + f"/videos/{task_id}"
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("agnes video poll failed: %s", str(exc)[:120])
+        return None
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
-def _arena_default() -> str | None:
-    """Return the arena's #1 model, or None if the arena isn't ready."""
-    try:
-        from app.arena import champion
-
-        top = champion()
-        return top["model"] if top else None
-    except Exception:  # noqa: BLE001
-        return None
-
 
 def llm_complete(
     system: str,
@@ -370,7 +699,19 @@ def llm_complete(
     settings = get_settings()
     provider = settings.llm_provider.lower()
 
-    chosen = model or settings.opencode_model
+    # Spec §29: with the Model Router enabled, a caller that does not pin a
+    # model gets the capability-ranked pick (which flows through 9Router).
+    # The static default (opencode CLI) stays as the dev-only fallback.
+    chosen = model
+    if chosen is None and settings.use_model_router:
+        try:
+            from app.core.model_registry import get_registry as model_get_registry  # noqa: PLC0415
+
+            chosen = model_get_registry().pick_for_profile("reasoning").model
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("model router default unavailable (%s) — using static default", str(exc)[:120])
+            chosen = settings.opencode_model
+    chosen = chosen or settings.opencode_model
 
     # Route prefixed agent models to free providers (google/groq/openrouter).
     dispatched = _dispatch_provider(system, prompt, chosen, temperature, timeout)
@@ -384,32 +725,21 @@ def llm_complete(
                 "opencode CLI not found on PATH. Set LLM_PROVIDER=ollama to "
                 "use the free local fallback."
             )
-        # Auto-select the arena champion when no model was specified.
-        if not model:
-            arena_default = _arena_default()
-            if arena_default:
-                chosen = arena_default
-        # Arena auto-failover for opencode models: if the chosen model is
-        # unhealthy, switch to the arena partner instead.
-        if settings.battle_failover and not model and _is_unhealthy(chosen):
-            for partner in (settings.battle_model_a, settings.battle_model_b):
-                if partner != chosen and not _is_unhealthy(partner):
-                    logger.warning("failover %s -> %s", chosen, partner)
-                    chosen = partner
-                    break
+        # The CLI only understands opencode model ids. A caller that pinned a
+        # prefixed free-provider model (router/..., groq/...) whose whole chain
+        # failed must not hand that id to the CLI — use the configured default.
+        if chosen.split("/", 1)[0] in _PROVIDER_ENDPOINTS:
+            chosen = settings.opencode_model
         try:
             text = _opencode_complete(system, prompt, chosen, temperature, timeout)
             _mark_success(chosen)
             return text
         except Exception as exc:  # noqa: BLE001
             _mark_failure(chosen)
-            if settings.battle_failover and not model:
-                for partner in (settings.battle_model_a, settings.battle_model_b):
-                    if partner != chosen and not _is_unhealthy(partner):
-                        logger.warning("failover after error %s -> %s", chosen, partner)
-                        text = _opencode_complete(system, prompt, partner, temperature, timeout)
-                        _mark_success(partner)
-                        return text
+            # Free-model chain: on error, fall through the next free models.
+            chained = _dispatch_chain(system, prompt, temperature, timeout)
+            if chained is not None:
+                return chained
             raise exc
 
     if provider == "ollama":
@@ -544,132 +874,3 @@ def _repair(text: str) -> str:
     cleaned = _re.sub(r"\bFalse\b", "false", cleaned)
     cleaned = _re.sub(r"\bNone\b", "null", cleaned)
     return cleaned
-
-
-# ---------------------------------------------------------------------------
-# Battle mode (arena): two models answer, a judge picks the winner
-# ---------------------------------------------------------------------------
-
-BattleResult = dict[str, Any]
-
-
-def _run_one(
-    system: str, prompt: str, model: str, timeout: int
-) -> tuple[str, str]:
-    """Run one model; returns (model, answer). Raises on failure."""
-    try:
-        answer = _opencode_complete(system, prompt, model, 0.6, timeout)
-    except Exception as exc:  # noqa: BLE001
-        # Fall back to the ollama path for `ollama/...` models.
-        if model.startswith("ollama/"):
-            try:
-                answer = _ollama_complete(system, prompt, model.split("/", 1)[1], 0.6, timeout)
-                _mark_success(model)
-                return model, answer.strip()
-            except Exception as ollama_exc:  # noqa: BLE001
-                _mark_failure(model)
-                raise
-        _mark_failure(model)
-        raise
-    _mark_success(model)
-    return model, answer.strip()
-
-
-def llm_battle(
-    system: str,
-    prompt: str,
-    *,
-    model_a: str | None = None,
-    model_b: str | None = None,
-    judge_model: str | None = None,
-    timeout: int = 90,
-) -> BattleResult:
-    """Run two models in parallel, then a judge picks the better answer.
-
-    Returns:
-      {"winner": <answer text>, "winner_model": <name>,
-       "answers": [{"model":..., "answer":...}, ...],
-       "judge": <judge rationale>}
-    """
-    settings = get_settings()
-    a = model_a or settings.battle_model_a
-    b = model_b or settings.battle_model_b
-    judge = judge_model or settings.battle_judge_model
-
-    # Auto-failover: if one model is unhealthy, skip the battle and let the
-    # healthy model answer alone (no judge needed).
-    if _is_unhealthy(a) and not _is_unhealthy(b):
-        model, answer = _run_one(system, prompt, b, timeout)
-        return {
-            "winner": answer,
-            "winner_model": model,
-            "answers": [{"model": model, "answer": answer}],
-            "judge": f"Auto-failover: {a} was unhealthy, {b} answered.",
-            "failover": True,
-            "skipped_model": a,
-        }
-    if _is_unhealthy(b) and not _is_unhealthy(a):
-        model, answer = _run_one(system, prompt, a, timeout)
-        return {
-            "winner": answer,
-            "winner_model": model,
-            "answers": [{"model": model, "answer": answer}],
-            "judge": f"Auto-failover: {b} was unhealthy, {a} answered.",
-            "failover": True,
-            "skipped_model": b,
-        }
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        fa = pool.submit(_run_one, system, prompt, a, timeout)
-        fb = pool.submit(_run_one, system, prompt, b, timeout)
-        results: dict[str, str] = {}
-        for fut in (fa, fb):
-            try:
-                model, answer = fut.result()
-                results[model] = answer
-            except Exception as exc:  # noqa: BLE001
-                logger.error("battle model failed: %s", exc)
-        if not results:
-            raise RuntimeError("both battle models failed")
-
-    # Stable order: answers[0] is always model A, answers[1] always model B.
-    answers = []
-    for m in (a, b):
-        if m in results:
-            answers.append({"model": m, "answer": results[m]})
-
-    judge_prompt = (
-        f"You are an impartial arena judge. Two AI models answered the same "
-        f"question. Pick the better answer (more accurate, on-brand, complete, "
-        f"clear) and say which one wins and why, briefly.\n\n"
-        f"--- Model A ({a}) ---\n{results.get(a, '(failed)')}\n\n"
-        f"--- Model B ({b}) ---\n{results.get(b, '(failed)')}\n\n"
-        f"Reply with ONLY: WINNER=<A or B>\nREASON=<one sentence>"
-    )
-    try:
-        judge_text = llm_complete(
-            "You are a strict, neutral arena judge.", judge_prompt,
-            model=judge, temperature=0.2, timeout=min(timeout, 45),
-        )
-        _mark_success(judge)
-    except Exception as exc:  # noqa: BLE001
-        # Judge is best-effort: still return A/B so the user can pick.
-        _mark_failure(judge)
-        logger.warning("battle judge failed (returning A/B): %s", exc)
-        judge_text = ""
-
-    if not judge_text:
-        winner_model = next(iter(results))
-    elif "WINNER=B" in judge_text and b in results:
-        chosen = b
-        winner_model = chosen
-    else:
-        chosen = a if a in results else next(iter(results))
-        winner_model = chosen
-
-    return {
-        "winner": results[winner_model],
-        "winner_model": winner_model,
-        "answers": answers,
-        "judge": judge_text.strip(),
-    }

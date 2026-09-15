@@ -9,16 +9,18 @@ Manual runs (POST /agents/run) are recorded too, with job_type="manual".
 """
 
 from __future__ import annotations
+from app.config import get_settings
 
 import logging
 import threading
 import time
 from datetime import datetime, time, timedelta, timezone
+from types import SimpleNamespace
 from typing import Any, Callable
 
 from app.agents import get_agent
 from app.database import SessionLocal
-from app.models import AgentRun, ContentItem, Lead, ResearchOpportunity, ScheduledJob
+from app.models import AgentRun, ContentItem, Lead, Mission, ResearchOpportunity, ScheduledJob
 from app.services.pipeline import run_research_pipeline
 from app.services.report import build_daily_report
 from app.services.social import notify
@@ -264,10 +266,23 @@ def _run_sales_sweep(payload: dict[str, Any]) -> str:
 
 
 HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
+    "ceo": lambda p: _run_ceo(p),
+    "content_hunter": lambda p: _run_content_hunter(p),
+    "social_intel": lambda p: _run_social_intel(p),
+    "strategist": lambda p: _run_strategist(p),
+    "content_strategist": lambda p: _run_content_strategist(p),
+    "creative_director": lambda p: _run_creative_director(p),
+    "td_creative_director": lambda p: _run_td_creative_director(p),
+    "td_asset_producer": lambda p: _run_td_asset_producer(p),
+    "video_producer": lambda p: _run_video_producer(p),
+    "ugc_producer": lambda p: _run_ugc_producer(p),
+    "social_manager": lambda p: _run_social_manager(p),
+    "growth_optimizer": lambda p: _run_growth_optimizer(p),
     "market_research": lambda p: "Stored new opportunity: " + str(
         get_agent("market_research").run(
             ideas=p.get("ideas", []),
             sources=p.get("sources", []),
+            scrape_urls=p.get("scrape_urls", []),
             extra_context=p.get("extra_context", ""),
         )["content_opportunity"]
     ),
@@ -275,7 +290,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "content": _run_content,
     "publish": _run_publish,
     "sales": _run_sales_sweep,
-    "analytics": lambda p: _run_daily_report(),
+    "analytics": lambda p: _run_daily_report(p),
     "video": lambda p: "Video concept: " + str(get_agent("video").run(topic=p.get("topic", ""))["title"]),
     "image": lambda p: "Image prompt: " + str(
         get_agent("image").run(idea=p.get("idea", "TREEtiti AI marketing system"), style=p.get("style", "cinematic"))["subject"]
@@ -285,6 +300,142 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], str]] = {
     "editor": lambda p: _run_editor(p),
     "seo": lambda p: _run_seo(p),
 }
+
+
+def _run_ceo(payload: dict[str, Any]) -> str:
+    """Orchestrate a task through the CEO agent (dynamic team resolution)."""
+    brief = payload.get("brief") or payload.get("objective") or payload.get("request") or ""
+    if not brief:
+        return "No brief provided — pass payload.brief"
+    report = get_agent("ceo").run(
+        brief=brief,
+        capabilities=payload.get("capabilities"),
+        skills=payload.get("skills"),
+        department=payload.get("department"),
+        team_keys=payload.get("team_keys"),
+        inputs=payload.get("inputs"),
+    )
+    team = ", ".join(report.get("team", [])) or "(none)"
+    return f"CEO orchestrated [{team}] -> {report.get('status')}"
+
+
+def _run_content_hunter(payload: dict[str, Any]) -> str:
+    """Scan live signals and surface today's content angle."""
+    result = get_agent("content_hunter").run(
+        brief=payload.get("brief", ""),
+        queries=payload.get("queries", []),
+        extra_context=payload.get("extra_context", ""),
+    )
+    return f"Trend: {result.get('trend', '')} | Angle: {result.get('angle', '')}"
+
+
+def _run_social_intel(payload: dict[str, Any]) -> str:
+    """Produce a competitive/social intel brief."""
+    result = get_agent("social_intel").run(
+        brief=payload.get("brief", ""),
+        competitors=payload.get("competitors", []),
+        extra_context=payload.get("extra_context", ""),
+    )
+    return f"Intel: {result.get('intel_summary', '')[:200]}"
+
+
+def _run_strategist(payload: dict[str, Any]) -> str:
+    """Produce a positioning strategy + campaign concept."""
+    result = get_agent("strategist").run(
+        brief=payload.get("brief", ""),
+        extra_context=payload.get("extra_context", ""),
+        insight_brief=payload.get("insight_brief", ""),
+    )
+    concept = result.get("campaign_concept") or {}
+    return f"Campaign: {concept.get('title', 'untitled')} | {result.get('positioning', '')[:160]}"
+
+
+def _run_content_strategist(payload: dict[str, Any]) -> str:
+    """Build pillars + editorial calendar + creative briefs."""
+    result = get_agent("content_strategist").run(
+        brief=payload.get("brief", ""),
+        extra_context=payload.get("extra_context", ""),
+        insight_brief=payload.get("insight_brief", ""),
+    )
+    pillars = result.get("content_pillars") or []
+    calendar = result.get("editorial_calendar") or []
+    return f"{len(pillars)} pillars | {len(calendar)} pieces planned"
+
+
+def _run_creative_director(payload: dict[str, Any]) -> str:
+    """Define the visual identity / art direction for a campaign."""
+    result = get_agent("creative_director").run(
+        brief=payload.get("brief", ""),
+        extra_context=payload.get("extra_context", ""),
+        insight_brief=payload.get("insight_brief", ""),
+    )
+    palette = result.get("palette") or {}
+    return f"Mood: {result.get('mood', '')} | Primary: {palette.get('primary', '')}"
+
+
+def _run_td_creative_director(payload: dict[str, Any]) -> str:
+    """Define 3D look direction + asset briefs."""
+    result = get_agent("td_creative_director").run(
+        brief=payload.get("brief", ""),
+        extra_context=payload.get("extra_context", ""),
+        insight_brief=payload.get("insight_brief", ""),
+    )
+    assets = result.get("asset_briefs") or []
+    return f"3D concept: {result.get('concept', '')[:120]} | {len(assets)} asset briefs"
+
+
+def _run_td_asset_producer(payload: dict[str, Any]) -> str:
+    """Produce a 3D asset build plan."""
+    result = get_agent("td_asset_producer").run(
+        brief=payload.get("brief", ""),
+        asset_brief=payload.get("asset_brief", ""),
+        extra_context=payload.get("extra_context", ""),
+    )
+    return f"Asset: {result.get('asset', '')} via {result.get('approach', '')} [{result.get('status', '')}]"
+
+
+def _run_video_producer(payload: dict[str, Any]) -> str:
+    """Render a video from a concept + shot list (or produce a spec)."""
+    result = get_agent("video_producer").run(
+        brief=payload.get("brief", ""),
+        concept=payload.get("concept", ""),
+        scenes=payload.get("scenes", []),
+        extra_context=payload.get("extra_context", ""),
+    )
+    return f"Video: {result.get('status', '')} | {result.get('video_url', '') or '(spec only)'}"
+
+
+def _run_ugc_producer(payload: dict[str, Any]) -> str:
+    """Produce a UGC content pack."""
+    result = get_agent("ugc_producer").run(
+        brief=payload.get("brief", ""),
+        extra_context=payload.get("extra_context", ""),
+        insight_brief=payload.get("insight_brief", ""),
+    )
+    return f"UGC pack: {result.get('ugc_angle', '')[:120]} | {len(result.get('images') or [])} images, {len(result.get('videos') or [])} videos"
+
+
+def _run_social_manager(payload: dict[str, Any]) -> str:
+    """Publish approved content to the requested channels."""
+    result = get_agent("social_manager").run(
+        brief=payload.get("brief", ""),
+        channels=payload.get("channels", []),
+        extra_context=payload.get("extra_context", ""),
+    )
+    n_pub = len(result.get("published") or [])
+    n_draft = len(result.get("drafts") or [])
+    return f"Published {n_pub} | drafted {n_draft} [{result.get('status', '')}]"
+
+
+def _run_growth_optimizer(payload: dict[str, Any]) -> str:
+    """Learning loop: analyze past results → optimization plan."""
+    result = get_agent("growth_optimizer").run(
+        brief=payload.get("brief", ""),
+        campaign_data=payload.get("campaign_data", ""),
+        analytics_report=payload.get("analytics_report", ""),
+        extra_context=payload.get("extra_context", ""),
+    )
+    return f"{len(result.get('learnings') or [])} learnings | {len(result.get('experiments') or [])} experiments | {len(result.get('scale') or [])} to scale"
 
 
 def _run_campaign(payload: dict[str, Any]) -> str:
@@ -362,8 +513,13 @@ def _run_seo(payload: dict[str, Any]) -> str:
 # Run tracking
 # ---------------------------------------------------------------------------
 
-def record_run(agent: str, job_type: str, fn: Callable[[], Any]) -> tuple[AgentRun, Any]:
-    """Execute `fn`, persist the outcome as an AgentRun, return (run, result)."""
+def record_run(agent: str, job_type: str, fn: Callable[[], Any]) -> tuple[SimpleNamespace, Any]:
+    """Execute `fn`, persist the outcome as an AgentRun, return (run, result).
+
+    The returned ``run`` is a detached snapshot object (not a live ORM row), so
+    callers can safely read its attributes after this function's session closes
+    — no DetachedInstanceError.
+    """
     started = datetime.now(timezone.utc)
     run = AgentRun(agent=agent, job_type=job_type, status="running")
     with SessionLocal() as db:
@@ -384,13 +540,31 @@ def record_run(agent: str, job_type: str, fn: Callable[[], Any]) -> tuple[AgentR
     finished = datetime.now(timezone.utc)
     duration_ms = int((finished - started).total_seconds() * 1000)
     with SessionLocal() as db:
-        run = db.get(AgentRun, run_id)
-        run.status = status
-        run.summary = summary
-        run.error = error
-        run.finished_at = finished
-        run.duration_ms = duration_ms
+        row = db.get(AgentRun, run_id)
+        row.status = status
+        row.summary = summary
+        row.error = error
+        row.finished_at = finished
+        row.duration_ms = duration_ms
         db.commit()
+        snapshot = _snapshot_run(row)
+    return snapshot, result
+
+
+def _snapshot_run(row: AgentRun):
+    """Copy an AgentRun's fields into a detached object safe to use post-session."""
+    return SimpleNamespace(
+        id=row.id,
+        agent=row.agent,
+        job_type=row.job_type,
+        status=row.status,
+        summary=row.summary or "",
+        error=row.error or "",
+        started_at=row.started_at,
+        finished_at=row.finished_at,
+        duration_ms=row.duration_ms,
+        task_id=getattr(row, "task_id", None),
+    )
     return run, result
 
 
@@ -448,6 +622,7 @@ def _tick() -> None:
             _inflight.add(job.id)
         threading.Thread(target=_run_scheduled, args=(job,), daemon=True).start()
     # reap finished inflight ids (they removed themselves on completion)
+    _tick_missions(now)
 
 
 def _worker_loop() -> None:
@@ -458,6 +633,57 @@ def _worker_loop() -> None:
         except Exception:  # noqa: BLE001
             logger.exception("autopilot tick failed")
         _stop.wait(TICK_SECONDS)
+
+
+def _tick_missions(now: datetime) -> None:
+    """Autonomous mission loop (rebuild §6-§14): run due daily/weekly cycles.
+
+    Active missions get their daily observe/analyze and weekly full-pipeline
+    cycles enqueued onto the background task queue (never blocking this tick).
+    LLM work only happens when a cycle is actually due — no always-thinking.
+    """
+    from app.missions import daily_due, mission_runner, weekly_due
+
+    with SessionLocal() as db:
+        missions = db.query(Mission).all()
+        due_daily = [m for m in missions if daily_due(m, now)]
+        due_weekly = [m for m in missions if weekly_due(m, now)]
+    if not due_daily and not due_weekly:
+        return
+    from app.core.task_queue import get_queue
+
+    q = get_queue()
+    q.register("mission", mission_runner)  # idempotent
+    with SessionLocal() as db:
+        for m in due_daily:
+            # Optimistic last_run_at prevents re-enqueue before the worker
+            # updates it on completion (same calendar-day guard).
+            row = db.get(Mission, m.id)
+            if row is None or row.status != "active":
+                continue
+            if row.last_run_at is not None and row.last_run_at.date() == now.date():
+                continue
+            q.enqueue(
+                "mission",
+                label=f"daily observe: {row.name[:50]}",
+                payload={"mission_id": row.id, "cycle_type": "daily"},
+            )
+            row.last_run_at = now
+            logger.info("mission %s daily cycle enqueued", row.id)
+        for m in due_weekly:
+            row = db.get(Mission, m.id)
+            if row is None or row.status != "active":
+                continue
+            if row.last_run_at is not None and row.last_run_at.date() == now.date():
+                continue
+            q.enqueue(
+                "mission",
+                label=f"weekly plan: {row.name[:50]}",
+                payload={"mission_id": row.id, "cycle_type": "weekly"},
+            )
+            row.last_run_at = now
+            logger.info("mission %s weekly cycle enqueued", row.id)
+        db.commit()
 
 
 def start_autopilot() -> None:

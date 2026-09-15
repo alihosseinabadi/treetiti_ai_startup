@@ -46,3 +46,10 @@ treetiti-artifacts/
 
 # ===== Kimi bridge automation =====
 .kimi-bridge-state*.db-journal
+
+# ===== Local secrets reference — NEVER commit (holds live key values) =====
+API_KEYS_MODELS.md
+*.keys.md
+
+# ===== Client business data — keep out of the repo =====
+customer_treetiti/**/*.xlsx

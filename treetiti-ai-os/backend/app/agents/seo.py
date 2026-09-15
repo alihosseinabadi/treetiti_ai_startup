@@ -10,17 +10,14 @@ from typing import Any
 
 from app.agents.base import BaseAgent
 
+from app.agents.prompts.seo import SYSTEM_PROMPT
+
 
 class SEOAgent(BaseAgent):
     model = "opencode/deepseek-v4-flash-free"
     name = "SEO Specialist Agent"
     role = "search-engine-optimization specialist"
-    system_prompt = (
-        "You make every TREEtiti piece discoverable and rank-worthy. "
-        "Meta titles 50-60 chars, meta descriptions 150-160 chars, keyword "
-        "hierarchy (primary / secondary / long-tail), JSON-LD schema, internal "
-        "links and image alt text. Mobile-first."
-    )
+    system_prompt = SYSTEM_PROMPT
 
     def run(self, content: str) -> dict[str, Any]:
         return self.complete_json(

@@ -1,7 +1,19 @@
 """Agent package: the AI employees."""
 
 from app.agents.base import BaseAgent
+from app.agents.ceo import CEOAgent
 from app.agents.brand import BrandIntelligenceAgent
+from app.agents.content_hunter import ContentHunterAgent
+from app.agents.social_intel import SocialIntelAgent
+from app.agents.strategist import BusinessStrategistAgent
+from app.agents.content_strategist import ContentStrategistAgent
+from app.agents.creative_director import CreativeDirectorAgent
+from app.agents.td_creative_director import TD3DCreativeDirectorAgent
+from app.agents.td_asset_producer import TDAssetProducerAgent
+from app.agents.video_producer import VideoProducerAgent
+from app.agents.ugc_producer import UGCProducerAgent
+from app.agents.social_manager import SocialManagerAgent
+from app.agents.growth_optimizer import GrowthOptimizerAgent
 from app.agents.research import MarketResearchAgent
 from app.agents.content import ContentCreationAgent
 from app.agents.video import VideoDirectorAgent
@@ -17,7 +29,19 @@ from app.agents.seo import SEOAgent
 # so the design doc's model/role map (Gemini, Qwen Coder, DeepSeek R1) is the
 # single source of truth for model assignment.
 _AGENT_KEY_BY_CLASS: dict[type, str] = {
+    CEOAgent: "ceo",
     BrandIntelligenceAgent: "brand",
+    ContentHunterAgent: "content_hunter",
+    SocialIntelAgent: "social_intel",
+    BusinessStrategistAgent: "strategist",
+    ContentStrategistAgent: "content_strategist",
+    CreativeDirectorAgent: "creative_director",
+    TD3DCreativeDirectorAgent: "td_creative_director",
+    TDAssetProducerAgent: "td_asset_producer",
+    VideoProducerAgent: "video_producer",
+    UGCProducerAgent: "ugc_producer",
+    SocialManagerAgent: "social_manager",
+    GrowthOptimizerAgent: "growth_optimizer",
     MarketResearchAgent: "market_research",
     ContentCreationAgent: "content",
     VideoDirectorAgent: "video",
@@ -41,7 +65,19 @@ def _build(agent: BaseAgent) -> BaseAgent:
 AGENTS: dict[str, BaseAgent] = {
     key: _build(agent)
     for key, agent in {
+        "ceo": CEOAgent(),
         "brand": BrandIntelligenceAgent(),
+        "content_hunter": ContentHunterAgent(),
+        "social_intel": SocialIntelAgent(),
+        "strategist": BusinessStrategistAgent(),
+        "content_strategist": ContentStrategistAgent(),
+        "creative_director": CreativeDirectorAgent(),
+        "td_creative_director": TD3DCreativeDirectorAgent(),
+        "td_asset_producer": TDAssetProducerAgent(),
+        "video_producer": VideoProducerAgent(),
+        "ugc_producer": UGCProducerAgent(),
+        "social_manager": SocialManagerAgent(),
+        "growth_optimizer": GrowthOptimizerAgent(),
         "market_research": MarketResearchAgent(),
         "content": ContentCreationAgent(),
         "video": VideoDirectorAgent(),
@@ -62,4 +98,4 @@ def get_agent(name: str) -> BaseAgent:
     return AGENTS[name]
 
 
-__all__ = ["AGENTS", "get_agent", "BaseAgent", "EditorAgent", "SEOAgent"]
+__all__ = ["AGENTS", "get_agent", "BaseAgent", "EditorAgent", "SEOAgent", "CEOAgent"]

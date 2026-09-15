@@ -31,6 +31,21 @@ const webhookUrl = supabaseUrl
   ? `${supabaseUrl}/functions/v1/chat-webhook`
   : null;
 
+const INTENTS: Array<{ intent: string; keys: string[] }> = [
+  { intent: "pricing", keys: ["price", "pricing", "cost", "quote", "budget", "цена", "цены", "цену", "стоимост", "скольк", "бюджет", "قیمت", "تعرفه", "fiyat", "kaç", "أسعار", "سعر", "تكلفة", "ميزانية"] },
+  { intent: "website", keys: ["website", "web site", "web-site", "site", "landing", "сайт", "лендинг", "веб", "подписн", "وب‌سایت", "وب سایت", "سایت", "موقع", "ويب", "web sitesi"] },
+  { intent: "branding", keys: ["brand", "logo", "identity", "бренд", "логотип", "айдентик", "лого", "برند", "لوگو", "هویت", "هوية", "شعار", "marka", "kimlik"] },
+  { intent: "call", keys: ["call", "book", "meeting", "schedule", "zoom", "demo", "звонок", "созвон", "встреч", "запис", "демо", "تماس", "مكالمة", "اجتماع", "حجز", "ديمو", "arama", "görüşme", "randevu"] },
+];
+
+export function detectIntent(text: string): string {
+  const lower = text.toLowerCase();
+  for (const { intent, keys } of INTENTS) {
+    if (keys.some((k) => lower.includes(k))) return intent;
+  }
+  return "default";
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -58,6 +73,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setVisitorEmail(email);
   }, []);
 
+  const streamReply = useCallback((text: string) => {
+    const id = crypto.randomUUID();
+    setMessages((prev) => [...prev, { id, role: "assistant", content: "", timestamp: new Date() }]);
+    setIsTyping(false);
+    let i = 0;
+    const step = Math.max(2, Math.round(text.length / 70));
+    const timer = setInterval(() => {
+      i = Math.min(text.length, i + step + Math.floor(Math.random() * 2));
+      const slice = text.slice(0, i);
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: slice } : m)));
+      if (i >= text.length) clearInterval(timer);
+    }, 26);
+  }, []);
+
   const sendMessage = useCallback(async (content: string) => {
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -69,48 +98,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setIsTyping(true);
 
     try {
+      let reply = t(`chatProvider.replies.${detectIntent(content)}`);
       if (webhookUrl && visitorEmail) {
-        const res = await fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: visitorName,
-            email: visitorEmail,
-            message: content,
-          }),
-        });
-        const data = await res.json();
-        const reply = data.success
-          ? t("chatProvider.successReply")
-          : t("chatProvider.fallbackReply");
-        const aiMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: reply,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
-      } else {
-        const aiMsg: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: t("chatProvider.successReply"),
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, aiMsg]);
+        try {
+          const res = await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: visitorName,
+              email: visitorEmail,
+              message: content,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) reply = t("chatProvider.successReply");
+        } catch {
+          reply = t("chatProvider.delayReply");
+        }
       }
+      await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
+      streamReply(reply);
     } catch {
-      const fallbackMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: t("chatProvider.delayReply"),
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, fallbackMsg]);
-    } finally {
       setIsTyping(false);
+      streamReply(t("chatProvider.delayReply"));
     }
-  }, [visitorName, visitorEmail]);
+  }, [visitorName, visitorEmail, t, streamReply]);
 
   const clearMessages = useCallback(() => setMessages([]), []);
 

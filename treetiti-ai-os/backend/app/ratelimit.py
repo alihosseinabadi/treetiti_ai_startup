@@ -53,6 +53,14 @@ def daily_limit(provider: str) -> int:
         return s.rate_limit_openrouter_daily
     if provider == "groq":
         return s.rate_limit_groq_daily
+    if provider == "ghm":
+        return s.rate_limit_github_models_daily
+    if provider == "nim":
+        return s.rate_limit_nim_daily
+    if provider == "glm":
+        return s.rate_limit_zai_daily
+    if provider == "cf":
+        return s.rate_limit_cf_daily
     # google: effectively unlimited for a single agency MVP (thousands/day).
     return 10_000_000
 

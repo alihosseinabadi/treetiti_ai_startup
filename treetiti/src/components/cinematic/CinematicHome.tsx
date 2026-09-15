@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import Scene01_Arrival from "../scenes/Scene01_Arrival"
 import UGCSection from "../UGCSection"
 import Scene03_AIWebsites from "../scenes/Scene03_AIWebsites"
@@ -8,6 +9,14 @@ import Scene08_Workflow from "../scenes/Scene08_Workflow"
 import Scene10_FinalCTA from "../scenes/Scene10_FinalCTA"
 
 export default function CinematicHome() {
+  useEffect(() => {
+    if (!window.location.hash) return
+    const to = setTimeout(() => {
+      document.querySelector(window.location.hash)?.scrollIntoView({ behavior: "instant", block: "start" })
+    }, 1200)
+    return () => clearTimeout(to)
+  }, [])
+
   return (
     <div className="relative" style={{ background: "var(--bg)" }}>
       <div id="hero"><Scene01_Arrival /></div>

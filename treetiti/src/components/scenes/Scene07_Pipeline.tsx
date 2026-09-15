@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { AnimatePresence, motion } from "framer-motion"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import {
@@ -8,11 +9,8 @@ import {
   Check,
   Cpu,
   Film,
-  FileText,
   ImagePlus,
   Loader2,
-  Mail,
-  Maximize2,
   Megaphone,
   Send,
   Sparkles,
@@ -20,13 +18,11 @@ import {
   Workflow,
 } from "lucide-react"
 import { Highlight } from "../ui/Accent"
+import { PipFace } from "../Pip"
 import { supabase } from "../../lib/supabase"
 
 gsap.registerPlugin(ScrollTrigger)
 
-type WorkTab = "context" | "scenes" | "final"
-
-const AGENT_FACE = "https://web-assets.invideo.io/iv-pro-landing-pages/prod/v2-home/agent-face-purple.png"
 const MAX_PICS = 20
 
 const SERVICE_TABS: { id: string; label: string; icon: typeof Film; hint: string }[] = [
@@ -38,13 +34,6 @@ const SERVICE_TABS: { id: string; label: string; icon: typeof Film; hint: string
 ]
 
 const TIMELINES = ["Within days", "1–2 weeks", "3–4 weeks", "1–2 months", "Flexible"]
-
-const QUESTIONS = [
-  { key: "goal", label: "What is your main goal with this project?", placeholder: "e.g. launch a product, increase sales, grow brand awareness" },
-  { key: "audience", label: "Who is the target audience?", placeholder: "e.g. young professionals, luxury buyers, local customers" },
-  { key: "style", label: "Any style or tone preferences?", placeholder: "e.g. minimal, luxurious, bold, cinematic, playful" },
-  { key: "extra", label: "Anything else we should know? (optional)", placeholder: "Optional details, references, or notes" },
-]
 
 interface Upload {
   id: string
@@ -59,20 +48,53 @@ export default function Scene07_Pipeline() {
   const frameRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [activeService, setActiveService] = useState("ugc")
-  const [workTab, setWorkTab] = useState<WorkTab>("context")
-
+  const [stepIndex, setStepIndex] = useState(0)
+  const [serviceId, setServiceId] = useState("")
   const [idea, setIdea] = useState("")
   const [pictures, setPictures] = useState<Upload[]>([])
-
   const [timeline, setTimeline] = useState("")
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [goal, setGoal] = useState("")
+  const [audience, setAudience] = useState("")
+  const [style, setStyle] = useState("")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
 
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState("")
+
+  const service = SERVICE_TABS.find((s) => s.id === serviceId)
+
+  const steps = ["service", "idea", "references", "timeline", "goal", "audience", "style", "contact", "review"] as const
+  type StepId = (typeof steps)[number]
+
+  const chipOptions: Partial<Record<StepId, string[]>> = {
+    goal: ["scene07q.gLaunch", "scene07q.gSales", "scene07q.gAwareness", "scene07q.gPremium"],
+    audience: ["scene07q.aYoung", "scene07q.aLuxury", "scene07q.aLocal", "scene07q.aBusiness", "scene07q.aEveryone"],
+    style: ["scene07q.sMinimal", "scene07q.sLuxurious", "scene07q.sBold", "scene07q.sCinematic", "scene07q.sPlayful"],
+  }
+  const questionKeys: Record<StepId, string> = {
+    service: "scene07q.q1",
+    idea: "scene07q.q2",
+    references: "scene07q.q3",
+    timeline: "scene07q.q4",
+    goal: "scene07q.q5",
+    audience: "scene07q.q6",
+    style: "scene07q.q7",
+    contact: "scene07q.q8",
+    review: "scene07q.q9",
+  }
+  const hintKeys: Partial<Record<StepId, string>> = {
+    service: "scene07q.q1hint",
+    idea: "scene07q.q2hint",
+    references: "scene07q.q3hint",
+    contact: "scene07q.q8hint",
+    review: "scene07q.q9hint",
+  }
+
+  const currentStep = steps[stepIndex]
+  const hasEmail = /^\S+@\S+\.\S+$/.test(email.trim())
+  const canSubmit = idea.trim() !== "" && name.trim() !== "" && hasEmail && timeline !== "" && !!serviceId
 
   useEffect(() => {
     const section = sectionRef.current
@@ -98,8 +120,6 @@ export default function Scene07_Pipeline() {
     return () => ctx.revert()
   }, [])
 
-  const service = SERVICE_TABS.find((s) => s.id === activeService) ?? SERVICE_TABS[0]!
-
   const addFiles = (files: FileList | File[] | null) => {
     if (!files) return
     const incoming = Array.from(files).slice(0, MAX_PICS - pictures.length)
@@ -119,12 +139,17 @@ export default function Scene07_Pipeline() {
     })
   }
 
-  const setAnswer = (key: string, value: string) =>
-    setAnswers((prev) => ({ ...prev, [key]: value }))
+  const goNext = () => setStepIndex((i) => Math.min(i + 1, steps.length - 1))
+  const goBack = () => setStepIndex((i) => Math.max(i - 1, 0))
 
-  const hasEmail = /^\S+@\S+\.\S+$/.test(email.trim())
-  const canSubmit =
-    idea.trim() !== "" && name.trim() !== "" && hasEmail && timeline !== ""
+  const pickChip = (value: string) => {
+    const step = steps[stepIndex]
+    if (step === "timeline") setTimeline(value)
+    if (step === "goal") setGoal(value)
+    if (step === "audience") setAudience(value)
+    if (step === "style") setStyle(value)
+    setTimeout(goNext, 260)
+  }
 
   const sendRequest = async () => {
     if (!canSubmit) return
@@ -132,11 +157,13 @@ export default function Scene07_Pipeline() {
     setError("")
     try {
       const body = [
-        `Service: ${service.label}`,
+        `Service: ${service?.label ?? serviceId}`,
         `Idea: ${idea}`,
         `References: ${pictures.length ? `${pictures.length} picture${pictures.length > 1 ? "s" : ""} (${pictures.map((p) => p.name).join(", ")})` : "none"}`,
         `Timeline: ${timeline}`,
-        ...QUESTIONS.map((q) => `${q.label} ${answers[q.key]}`),
+        `Main goal: ${goal}`,
+        `Target audience: ${audience}`,
+        `Style preferences: ${style}`,
         `Name: ${name}`,
         `Email: ${email}`,
       ].join("\n")
@@ -161,134 +188,179 @@ export default function Scene07_Pipeline() {
     }
   }
 
-  const renderSummary = (icon: ReactNode, label: string, value: string, doneFlag: boolean) => (
-    <div className="flex items-start gap-2.5 py-1.5">
-      <span
-        className="w-[14px] h-[14px] mt-0.5 rounded-full flex items-center justify-center shrink-0"
-        style={
-          doneFlag
-            ? { background: "rgba(110,168,255,0.15)", border: "1px solid rgba(110,168,255,0.35)" }
-            : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }
-        }
-      >
-        {doneFlag ? <Check className="w-2.5 h-2.5" style={{ color: "rgba(110,168,255,0.9)" }} /> : icon}
-      </span>
-      <div className="min-w-0">
-        <div className="text-[11px] uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.35)" }}>{label}</div>
-        <div className="text-[12.5px] leading-snug break-words" style={{ color: value ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.25)" }}>
-          {value || "Not filled yet"}
-        </div>
-      </div>
-    </div>
-  )
+  const reviewRows = () => [
+    { label: t("scene07q.lblService"), value: service?.label ?? "—", step: 0 },
+    { label: t("scene07q.lblIdea"), value: idea || "—", step: 1 },
+    { label: t("scene07q.lblReferences"), value: pictures.length ? `${pictures.length} 📎` : t("scene07q.none"), step: 2 },
+    { label: t("scene07q.lblTimeline"), value: timeline || "—", step: 3 },
+    { label: t("scene07q.lblGoal"), value: goal || "—", step: 4 },
+    { label: t("scene07q.lblAudience"), value: audience || "—", step: 5 },
+    { label: t("scene07q.lblStyle"), value: style || "—", step: 6 },
+    { label: t("scene07q.lblContact"), value: `${name} · ${email}`, step: 7 },
+  ]
 
-  const renderContextTab = (): ReactNode => (
-    <div className="space-y-4">
-      {/* idea */}
-      <div>
-        <label className="inline-flex items-center gap-1.5 text-[12px] font-medium mb-2" style={{ color: "rgba(255,255,255,0.6)" }}>
-          <FileText className="w-3.5 h-3.5" style={{ color: "#6EA8FF" }} />
-          Your idea — write it down
-          <span className="ml-1 text-[10px] normal-case" style={{ color: "rgba(255,255,255,0.3)" }}>(required)</span>
-        </label>
-        <textarea
-          value={idea}
-          onChange={(e) => setIdea(e.target.value)}
-          rows={4}
-          placeholder="Tell us what you want us to build, create, or automate for you..."
-          style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(110,168,255,0.14)",
-            color: "rgba(255,255,255,0.85)",
-          }}
-          className="w-full rounded-xl px-3.5 py-3 text-[13.5px] leading-relaxed outline-none placeholder:text-white/25 resize-none focus:border-[#6EA8FF]/40 transition-colors"
-        />
-      </div>
+  const inputStyle = {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(110,168,255,0.14)",
+    color: "rgba(255,255,255,0.85)",
+  }
 
-      {/* pictures */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="inline-flex items-center gap-1.5 text-[12px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>
-            <ImagePlus className="w-3.5 h-3.5" style={{ color: "#6EA8FF" }} />
-            References & pictures
-            <span className="ml-1 text-[10px] normal-case" style={{ color: "rgba(255,255,255,0.3)" }}>up to {MAX_PICS}</span>
-          </label>
-          <span className="text-[11px] tabular-nums" style={{ color: "rgba(255,255,255,0.4)" }}>{pictures.length}/{MAX_PICS}</span>
-        </div>
+  const renderStep = () => {
+    const step = steps[stepIndex]
+    if (!step) return null
 
-        {pictures.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 mb-3">
-            {pictures.map((pic) => (
-              <div
-                key={pic.id}
-                className="relative rounded-lg overflow-hidden group/pic aspect-square"
-                style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}
-              >
-                <img src={pic.url} alt={pic.name} className="w-full h-full object-cover" loading="lazy" />
-                <button
-                  type="button"
-                  aria-label={`Remove ${pic.name}`}
-                  onClick={() => removePic(pic.id)}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md flex items-center justify-center bg-black/60 text-white/70 hover:text-white hover:bg-black/80 backdrop-blur transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => { addFiles(e.target.files); e.target.value = "" }}
-        />
-
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={pictures.length >= MAX_PICS}
-          className="w-full rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 py-8 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-          style={{
-            borderColor: "rgba(110,168,255,0.25)",
-            background: "rgba(110,168,255,0.04)",
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
-          <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(110,168,255,0.1)", border: "1px solid rgba(110,168,255,0.2)" }}>
-            <ImagePlus className="w-4 h-4" style={{ color: "#6EA8FF" }} />
+    if (done) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <span className="mb-6">
+            <PipFace mood="happy" size={56} />
           </span>
-          <span className="text-[12.5px] font-medium">Add pictures (1 to {MAX_PICS})</span>
-          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>Click to pick from your device</span>
-        </button>
-      </div>
-    </div>
-  )
+          <p className="text-lg font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>{t("scene07q.done")}</p>
+          <p className="text-[13px] mt-2 max-w-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+            {t("scene07q.doneText")}
+          </p>
+        </div>
+      )
+    }
 
-  const renderScenesTab = (): ReactNode => (
-    <div className="space-y-5">
-      {/* timeline */}
-      <div>
-        <label className="inline-flex items-center gap-1.5 text-[12px] font-medium mb-2" style={{ color: "rgba(255,255,255,0.6)" }}>
-          How should the timeline look?
-          <span className="ml-1 text-[10px] normal-case" style={{ color: "rgba(255,255,255,0.3)" }}>(required)</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
+    if (step === "service") {
+      return (
+        <div className="space-y-2.5">
+          {SERVICE_TABS.map((s) => {
+            const Icon = s.icon
+            const active = s.id === serviceId
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  setServiceId(s.id)
+                  setTimeout(goNext, 260)
+                }}
+                className="w-full flex items-center gap-3.5 rounded-2xl px-4 py-3.5 text-start transition-all duration-300 hover:translate-x-1"
+                style={{
+                  background: active ? "rgba(110,168,255,0.1)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${active ? "rgba(110,168,255,0.35)" : "rgba(255,255,255,0.08)"}`,
+                }}
+              >
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: active ? "rgba(110,168,255,0.16)" : "rgba(110,168,255,0.06)", border: "1px solid rgba(110,168,255,0.18)" }}
+                >
+                  <Icon className="w-[18px] h-[18px]" style={{ color: "#6EA8FF" }} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>{s.label}</span>
+                  <span className="block text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>{s.hint}</span>
+                </span>
+                {active && <Check className="w-4 h-4 ms-auto shrink-0" style={{ color: "#6EA8FF" }} />}
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+
+    if (step === "idea") {
+      return (
+        <div>
+          <textarea
+            value={idea}
+            onChange={(e) => setIdea(e.target.value)}
+            rows={5}
+            autoFocus
+            placeholder={t("scene07q.q2placeholder")}
+            style={inputStyle}
+            className="w-full rounded-2xl px-4 py-3.5 text-[14px] leading-relaxed outline-none placeholder:text-white/25 resize-none focus:border-[#6EA8FF]/40 transition-colors"
+          />
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={idea.trim() === ""}
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[14px] font-semibold transition-all duration-300 disabled:opacity-35 disabled:cursor-not-allowed"
+            style={{ background: idea.trim() ? "#6EA8FF" : "rgba(255,255,255,0.06)", color: idea.trim() ? "#07101f" : "rgba(255,255,255,0.4)" }}
+          >
+            {t("scene07q.continue")} <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+
+    if (step === "references") {
+      return (
+        <div>
+          {pictures.length > 0 && (
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5 mb-3">
+              {pictures.map((pic) => (
+                <div
+                  key={pic.id}
+                  className="relative rounded-xl overflow-hidden group/pic aspect-square"
+                  style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}
+                >
+                  <img src={pic.url} alt={pic.name} className="w-full h-full object-cover" loading="lazy" />
+                  <button
+                    type="button"
+                    aria-label={`Remove ${pic.name}`}
+                    onClick={() => removePic(pic.id)}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-md flex items-center justify-center bg-black/60 text-white/70 hover:text-white hover:bg-black/80 backdrop-blur transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => { addFiles(e.target.files); e.target.value = "" }}
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={pictures.length >= MAX_PICS}
+            className="w-full rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 py-7 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ borderColor: "rgba(110,168,255,0.25)", background: "rgba(110,168,255,0.04)", color: "rgba(255,255,255,0.5)" }}
+          >
+            <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(110,168,255,0.1)", border: "1px solid rgba(110,168,255,0.2)" }}>
+              <ImagePlus className="w-4 h-4" style={{ color: "#6EA8FF" }} />
+            </span>
+            <span className="text-[12.5px] font-medium">{t("scene07q.q3add")}</span>
+            <span className="text-[11px] tabular-nums" style={{ color: "rgba(255,255,255,0.25)" }}>{pictures.length}/{MAX_PICS}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={goNext}
+            className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[14px] font-semibold transition-all duration-300"
+            style={{ background: "#6EA8FF", color: "#07101f" }}
+          >
+            {pictures.length ? t("scene07q.continue") : t("scene07q.skip")} <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+
+    if (step === "timeline") {
+      return (
+        <div className="flex flex-wrap gap-2.5">
           {TIMELINES.map((tl) => {
             const active = timeline === tl
             return (
               <button
                 key={tl}
                 type="button"
-                onClick={() => setTimeline(tl)}
-                className="px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-300"
+                onClick={() => pickChip(tl)}
+                className="px-4 py-2.5 rounded-full text-[13px] font-medium transition-all duration-300 hover:scale-[1.04]"
                 style={{
-                  background: active ? "rgba(110,168,255,0.12)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${active ? "rgba(110,168,255,0.3)" : "rgba(255,255,255,0.1)"}`,
-                  color: active ? "#6EA8FF" : "rgba(255,255,255,0.55)",
+                  background: active ? "rgba(110,168,255,0.14)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${active ? "rgba(110,168,255,0.4)" : "rgba(255,255,255,0.1)"}`,
+                  color: active ? "#6EA8FF" : "rgba(255,255,255,0.6)",
                 }}
               >
                 {tl}
@@ -296,113 +368,110 @@ export default function Scene07_Pipeline() {
             )
           })}
         </div>
-      </div>
+      )
+    }
 
-      {/* questions */}
-      {QUESTIONS.map((q) => (
-        <div key={q.key}>
-          <label className="inline-flex items-center gap-1.5 text-[12px] font-medium mb-2" style={{ color: "rgba(255,255,255,0.6)" }}>
-            {q.label}
-            <span className="ml-1 text-[10px] normal-case" style={{ color: "rgba(255,255,255,0.25)" }}>optional</span>
-          </label>
+    if (step === "goal" || step === "audience" || step === "style") {
+      const options = (chipOptions[step] ?? []).map((k) => t(k))
+      const value = step === "goal" ? goal : step === "audience" ? audience : style
+      const setValue = step === "goal" ? setGoal : step === "audience" ? setAudience : setStyle
+      return (
+        <div>
+          <div className="flex flex-wrap gap-2.5">
+            {options.map((opt) => {
+              const active = value === opt
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => {
+                    setValue(opt)
+                    setTimeout(goNext, 260)
+                  }}
+                  className="px-4 py-2.5 rounded-full text-[13px] font-medium transition-all duration-300 hover:scale-[1.04]"
+                  style={{
+                    background: active ? "rgba(110,168,255,0.14)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${active ? "rgba(110,168,255,0.4)" : "rgba(255,255,255,0.1)"}`,
+                    color: active ? "#6EA8FF" : "rgba(255,255,255,0.6)",
+                  }}
+                >
+                  {opt}
+                </button>
+              )
+            })}
+          </div>
           <input
-            value={answers[q.key] || ""}
-            onChange={(e) => setAnswer(q.key, e.target.value)}
-            placeholder={q.placeholder}
-            className="w-full rounded-xl px-3.5 py-2.5 text-[13px] outline-none placeholder:text-white/25 transition-colors"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(110,168,255,0.14)", color: "rgba(255,255,255,0.85)" }}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && value.trim()) goNext() }}
+            placeholder={t("scene07q.orWrite")}
+            className="mt-4 w-full rounded-2xl px-4 py-3 text-[13.5px] outline-none placeholder:text-white/25 transition-colors"
+            style={inputStyle}
           />
         </div>
-      ))}
+      )
+    }
 
-      {/* contact */}
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div>
-          <label className="inline-flex items-center gap-1.5 text-[12px] font-medium mb-2" style={{ color: "rgba(255,255,255,0.6)" }}>
-            Your name
-            <span className="ml-1 text-[10px] normal-case" style={{ color: "rgba(255,255,255,0.3)" }}>(required)</span>
-          </label>
+    if (step === "contact") {
+      return (
+        <div className="space-y-3">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Full name"
+            placeholder={t("scene07q.namePlaceholder")}
             autoComplete="name"
-            className="w-full rounded-xl px-3.5 py-2.5 text-[13px] outline-none placeholder:text-white/25 transition-colors"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(110,168,255,0.14)", color: "rgba(255,255,255,0.85)" }}
+            className="w-full rounded-2xl px-4 py-3 text-[13.5px] outline-none placeholder:text-white/25 transition-colors"
+            style={inputStyle}
           />
-        </div>
-        <div>
-          <label className="inline-flex items-center gap-1.5 text-[12px] font-medium mb-2" style={{ color: "rgba(255,255,255,0.6)" }}>
-            <Mail className="w-3.5 h-3.5" style={{ color: "#6EA8FF" }} />
-            Email
-            <span className="ml-1 text-[10px] normal-case" style={{ color: "rgba(255,255,255,0.3)" }}>(required)</span>
-          </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@company.com"
+            onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && hasEmail) goNext() }}
+            placeholder={t("scene07q.emailPlaceholder")}
             autoComplete="email"
-            className="w-full rounded-xl px-3.5 py-2.5 text-[13px] outline-none placeholder:text-white/25 transition-colors"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(110,168,255,0.14)", color: "rgba(255,255,255,0.85)" }}
+            className="w-full rounded-2xl px-4 py-3 text-[13.5px] outline-none placeholder:text-white/25 transition-colors"
+            style={inputStyle}
           />
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderFinalRow = (label: string, value: string) => (
-    <div>
-      <div className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{label}</div>
-      <div className="text-[13px] leading-snug break-words" style={{ color: value !== "—" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)" }}>
-        {value || "—"}
-      </div>
-    </div>
-  )
-
-  const renderFinalTab = (): ReactNode => {
-    if (done) {
-      return (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <span className="w-14 h-14 rounded-full flex items-center justify-center mb-5"
-            style={{ background: "rgba(110,168,255,0.1)", border: "1px solid rgba(110,168,255,0.25)" }}>
-            <Check className="w-6 h-6" style={{ color: "#6EA8FF" }} />
-          </span>
-          <p className="text-lg font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>Request received!</p>
-          <p className="text-[13px] mt-2 max-w-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-            We will contact you as soon as possible to bring your idea to life.
-          </p>
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!name.trim() || !hasEmail}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[14px] font-semibold transition-all duration-300 disabled:opacity-35 disabled:cursor-not-allowed"
+            style={{ background: name.trim() && hasEmail ? "#6EA8FF" : "rgba(255,255,255,0.06)", color: name.trim() && hasEmail ? "#07101f" : "rgba(255,255,255,0.4)" }}
+          >
+            {t("scene07q.continue")} <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       )
     }
 
     return (
-      <div className="space-y-4">
-        <div
-          className="rounded-xl px-4 py-3"
-          style={{ background: "rgba(110,168,255,0.06)", border: "1px solid rgba(110,168,255,0.16)" }}
-        >
-          <p className="text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
-            Review your request below. Once you submit, our team takes your wish and does it for you — we will contact you as soon as possible.
-          </p>
+      <div>
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
+          {reviewRows().map((row, i) => (
+            <button
+              key={row.label}
+              type="button"
+              onClick={() => setStepIndex(row.step)}
+              className="w-full flex items-center justify-between gap-4 px-4 py-3 text-start transition-colors hover:bg-white/[0.03]"
+              style={{ borderBottom: i < reviewRows().length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
+            >
+              <span className="text-[11px] uppercase tracking-wide shrink-0" style={{ color: "rgba(255,255,255,0.35)" }}>{row.label}</span>
+              <span className="text-[13px] leading-snug break-words text-end min-w-0" style={{ color: row.value !== "—" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)" }}>
+                {row.value}
+              </span>
+            </button>
+          ))}
         </div>
 
-        <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {renderFinalRow("Service", service.label)}
-          {renderFinalRow("Your idea", idea)}
-          {renderFinalRow("References", pictures.length ? `${pictures.length} picture${pictures.length > 1 ? "s" : ""} attached` : "None added")}
-          {renderFinalRow("Timeline", timeline)}
-          {QUESTIONS.map((q) => renderFinalRow(q.label.replace("?", ""), answers[q.key] || "—"))}
-          {renderFinalRow("Contact", `${name} · ${email}`)}
-        </div>
-
-        {error && <p className="text-[12.5px]" style={{ color: "rgba(239,68,68,0.85)" }}>{error}</p>}
+        {error && <p className="text-[12.5px] mt-3" style={{ color: "rgba(239,68,68,0.85)" }}>{error}</p>}
 
         <button
           type="button"
           onClick={sendRequest}
           disabled={!canSubmit || submitting}
-          className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-[14px] font-semibold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-[14px] font-semibold transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
             background: canSubmit ? "#6EA8FF" : "rgba(255,255,255,0.08)",
             color: canSubmit ? "#07101f" : "rgba(255,255,255,0.4)",
@@ -410,12 +479,12 @@ export default function Scene07_Pipeline() {
           }}
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          {submitting ? "Submitting..." : "Send request to our team"}
+          {submitting ? t("scene07q.submitting") : t("scene07q.submit")}
         </button>
 
         {!canSubmit && (
-          <p className="text-[11.5px] text-center" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Add your idea, timeline, name & email to submit.
+          <p className="text-[11.5px] text-center mt-3" style={{ color: "rgba(255,255,255,0.3)" }}>
+            {t("scene07q.needMore")}
           </p>
         )}
       </div>
@@ -424,7 +493,6 @@ export default function Scene07_Pipeline() {
 
   return (
     <section ref={sectionRef} className="relative w-full py-24 md:py-32 px-4 md:px-8 overflow-hidden" style={{ background: "var(--bg)" }}>
-      {/* ambient */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[80vmin] h-[80vmin] rounded-full"
@@ -432,8 +500,7 @@ export default function Scene07_Pipeline() {
         />
       </div>
 
-      <div className="relative max-w-[1100px] mx-auto">
-        {/* heading */}
+      <div className="relative max-w-[680px] mx-auto">
         <div ref={headingRef} className="text-center mb-12 md:mb-16">
           <span className="text-[10px] tracking-[0.35em] uppercase font-medium block mb-4" style={{ color: "rgba(110,168,255,0.5)" }}>
             <Highlight text={t("scene07.label")} />
@@ -442,163 +509,78 @@ export default function Scene07_Pipeline() {
             Tell us your idea. <span style={{ color: "#6EA8FF" }}>We build it.</span>
           </h2>
           <p className="text-sm md:text-base mt-4 leading-relaxed max-w-xl mx-auto" style={{ color: "var(--text-muted)" }}>
-            Send your brief, references, and timeline — our team takes your wish and does it for you.
+            Just answer a few friendly questions — our team takes your wish and does it for you.
           </p>
         </div>
 
-        {/* app frame */}
         <div
           ref={frameRef}
-          className="relative rounded-2xl overflow-hidden"
+          className="relative rounded-[28px] overflow-hidden"
           style={{
             background: "rgba(13,14,16,0.92)",
             border: "1px solid rgba(255,255,255,0.08)",
             boxShadow: "0 0 0 1px rgba(74,158,255,0.04) inset, 0 40px 140px rgba(0,0,0,0.55), 0 0 80px rgba(74,158,255,0.03)",
           }}
         >
-          {/* service bar */}
-          <div
-            className="flex items-center gap-1 px-3 py-2 overflow-x-auto"
-            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.25)" }}
-            role="tablist"
-            aria-label="Choose what you need"
-          >
-            {SERVICE_TABS.map((s) => {
-              const Icon = s.icon
-              const active = s.id === activeService
-              return (
+          {!done && (
+            <div className="h-[3px] w-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+              <motion.div
+                className="h-full"
+                style={{ background: "linear-gradient(90deg, var(--accent), #a78bfa)" }}
+                animate={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }}
+                transition={{ type: "spring", stiffness: 120, damping: 22 }}
+              />
+            </div>
+          )}
+
+          <div className="px-5 md:px-8 py-6 md:py-8">
+            {!done && (
+              <div className="flex items-center gap-3 mb-6">
                 <button
-                  key={s.id}
                   type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setActiveService(s.id)}
-                  className="shrink-0 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-all duration-300"
-                  style={{
-                    background: active ? "rgba(110,168,255,0.12)" : "transparent",
-                    border: `1px solid ${active ? "rgba(110,168,255,0.25)" : "transparent"}`,
-                    color: active ? "#6EA8FF" : "rgba(255,255,255,0.45)",
-                  }}
+                  onClick={goBack}
+                  disabled={stepIndex === 0}
+                  aria-label={t("scene07q.back")}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-white/5"
+                  style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  {s.label}
+                  <ArrowLeft className="w-3.5 h-3.5" />
                 </button>
-              )
-            })}
-
-            <div className="flex-1" />
-
-            <button type="button" aria-label="Enter fullscreen" className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md text-white/40 hover:text-white hover:bg-white/5 transition-colors">
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* body */}
-          <div className="grid md:grid-cols-[290px_1fr]">
-            {/* left — request summary */}
-            <aside
-              className="flex flex-col border-r md:border-r md:border-b-0 border-b"
-              style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.18)" }}
-            >
-              <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="w-7 h-7 rounded-full overflow-hidden shrink-0">
-                  <img src={AGENT_FACE} alt="" className="w-full h-full object-cover" />
-                </span>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold leading-tight" style={{ color: "rgba(255,255,255,0.85)" }}>
-                    {service.label}
-                  </div>
-                  <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>Request summary</div>
-                </div>
                 <div className="flex-1" />
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-3 py-3 max-h-[52vh]">
-                {renderSummary(<Sparkles className="w-2.5 h-2.5" style={{ color: "rgba(255,255,255,0.5)" }} />, "Service", service.label, true)}
-                <div className="w-full h-px my-2" style={{ background: "rgba(255,255,255,0.06)" }} />
-                {renderSummary(<></>, "Your idea", idea, idea.trim() !== "")}
-                {renderSummary(<></>, "References", pictures.length ? `${pictures.length} picture${pictures.length > 1 ? "s" : ""}` : "", pictures.length > 0)}
-                <div className="w-full h-px my-4" style={{ background: "rgba(255,255,255,0.06)" }} />
-                {renderSummary(<Check className="w-2.5 h-2.5" style={{ color: "rgba(255,255,255,0.35)" }} />, "Timeline", timeline, timeline !== "")}
-                {QUESTIONS.map((q) => renderSummary(<Check className="w-2.5 h-2.5" style={{ color: "rgba(255,255,255,0.35)" }} />, q.label.replace("?", ""), answers[q.key] || "", Boolean(answers[q.key]?.trim())))}
-                {renderSummary(<Check className="w-2.5 h-2.5" style={{ color: "rgba(255,255,255,0.35)" }} />, "Contact", email ? `${name || "—"} · ${email}` : "", hasEmail)}
-              </div>
-
-              <div className="px-3 py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="flex items-center gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "4px" }}>
-                  {(["context", "scenes", "final"] as WorkTab[]).map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setWorkTab(tab)}
-                      className="flex-1 rounded-lg flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium capitalize transition-colors"
-                      style={{
-                        background: workTab === tab ? "rgba(110,168,255,0.14)" : "transparent",
-                        color: workTab === tab ? "#6EA8FF" : "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </aside>
-
-            {/* right — form */}
-            <section className="flex flex-col min-w-0" style={{ background: "rgba(255,255,255,0.01)" }}>
-              <div className="flex items-center gap-1 px-3 py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                {(["context", "scenes", "final"] as WorkTab[]).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    role="tab"
-                    aria-selected={workTab === tab}
-                    onClick={() => setWorkTab(tab)}
-                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide transition-colors"
-                    style={{
-                      background: workTab === tab ? "rgba(110,168,255,0.12)" : "transparent",
-                      color: workTab === tab ? "#6EA8FF" : "rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    {tab === "context" && <FileText className="w-3 h-3" />}
-                    {tab === "scenes" && <Film className="w-3 h-3" />}
-                    {tab === "final" && <Sparkles className="w-3 h-3" />}
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-3 md:p-4 max-h-[60vh]">
-                {workTab === "context" && renderContextTab()}
-                {workTab === "scenes" && renderScenesTab()}
-                {workTab === "final" && renderFinalTab()}
-              </div>
-
-              {/* footer nav */}
-              <div className="flex items-center justify-between px-3 py-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <button
-                  type="button"
-                  onClick={() => setWorkTab(workTab === "context" ? "context" : workTab === "scenes" ? "context" : "scenes")}
-                  disabled={workTab === "context"}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-                  style={{ color: "rgba(255,255,255,0.6)" }}
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back
-                </button>
-                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>
-                  Step {({ context: 1, scenes: 2, final: 3 } as Record<WorkTab, number>)[workTab]} of 3
+                <span className="text-[11px] tabular-nums" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  {t("scene07q.progress", { current: stepIndex + 1, total: steps.length })}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setWorkTab(workTab === "context" ? "scenes" : "final")}
-                  disabled={workTab === "final"}
-                  className="inline-flex items-center gap-1.5 text-[12px] font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-                  style={{ color: "#6EA8FF" }}
-                >
-                  Next <ArrowRight className="w-3.5 h-3.5" />
-                </button>
               </div>
-            </section>
+            )}
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${stepIndex}-${done}`}
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -24 }}
+                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {!done && (
+                  <div className="flex items-start gap-3.5 mb-6">
+                    <div className="shrink-0 mt-0.5">
+                      <PipFace mood="idle" size={34} track />
+                    </div>
+                    <div>
+                      <h3 className="text-[19px] md:text-[21px] font-semibold leading-snug" style={{ color: "rgba(255,255,255,0.92)" }}>
+                        {t(questionKeys[steps[stepIndex] ?? "service"])}
+                      </h3>
+                      {steps[stepIndex] && hintKeys[steps[stepIndex]!] && (
+                        <p className="text-[12.5px] mt-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                          {t(hintKeys[steps[stepIndex]!]!)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {renderStep()}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>

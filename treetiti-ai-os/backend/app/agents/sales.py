@@ -10,6 +10,8 @@ from typing import Any
 
 from app.agents.base import BaseAgent
 
+from app.agents.prompts.sales import SYSTEM_PROMPT
+
 PACKAGES = [
     "UGC Marketing Package",
     "AI Sales Assistant",
@@ -22,10 +24,7 @@ class SalesAgent(BaseAgent):
     model = "zai/glm-4.5-flash"  # verified free, fast for hourly follow-up
     name = "Sales Agent"
     role = "senior B2B sales representative"
-    system_prompt = """\
-You are TREEtiti's senior sales representative for B2B buyers.
-You qualify leads, score them, recommend the right package, and write replies
-that sound like a real senior professional — confident, specific, no hype."""
+    system_prompt = SYSTEM_PROMPT
 
     def run(self, lead: dict[str, Any]) -> dict[str, Any]:
         result = self.complete_json(

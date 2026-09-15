@@ -10,27 +10,15 @@ from __future__ import annotations
 from typing import Any
 
 from app.agents.base import BaseAgent
+from app.agents.prompts.brand import BRAND_RULES, SYSTEM_PROMPT
 from app.memory.store import search_brand_memory
-
-BRAND_RULES = """\
-TREEtiti brand rules (non-negotiable):
-- Positioning: TREEtiti is a premium AI agency building AI agents, business
-  automation systems, AI websites, CRM automation and AI marketing systems.
-- Style: premium, futuristic, minimal, confident. Apple / Linear / Stripe inspired.
-- Audience: professional B2B decision-makers (founders, CTOs, marketing leads).
-- Tone: confident but not hypey. No fluff, no emoji spam, no all-caps shouting.
-- Language: clear, direct, high-end. Every claim must be believable and specific.
-- No generic AI buzzwords without a concrete benefit attached.
-"""
 
 
 class BrandIntelligenceAgent(BaseAgent):
     model = "opencode/deepseek-v4-flash-free"  # verified free, strict JSON verdicts
     name = "Brand Intelligence Agent"
     role = "brand guardian"
-    system_prompt = (
-        "You ensure every piece of TREEtiti content stays on-brand.\n" + BRAND_RULES
-    )
+    system_prompt = SYSTEM_PROMPT
 
     def run(self, content: str, platform: str = "") -> dict[str, Any]:
         """Check content against brand rules. Returns verdict + fixes."""

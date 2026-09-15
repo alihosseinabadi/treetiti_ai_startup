@@ -46,53 +46,6 @@ def test_llm_json_invalid_raises(monkeypatch):
         llm_json("sys", "prompt")
 
 
-def test_failover_skips_unhealthy_model(monkeypatch):
-    from app import llm
-
-    llm._reset_health()
-    llm._mark_failure("opencode/deepseek-v4-flash-free")
-    llm._mark_failure("opencode/deepseek-v4-flash-free")
-
-    called = []
-    monkeypatch.setattr(llm, "_run_one", lambda sys_, prompt, model, timeout: (model, f"ans {model}") and called.append(model) or (model, f"ans {model}"))
-
-    result = llm.llm_battle(
-        "sys", "prompt",
-        model_a="opencode/deepseek-v4-flash-free",
-        model_b="zai/glm-4.7-flash",
-        judge_model="opencode/deepseek-v4-flash-free",
-    )
-
-    assert called == ["zai/glm-4.7-flash"]  # only the healthy model runs
-    assert result["failover"] is True
-    assert result["skipped_model"] == "opencode/deepseek-v4-flash-free"
-    assert result["winner_model"] == "zai/glm-4.7-flash"
-    assert len(result["answers"]) == 1
-
-
-def test_battle_runs_both_when_healthy(monkeypatch):
-    from app import llm
-
-    llm._reset_health()
-    called = []
-    monkeypatch.setattr(
-        llm, "_run_one",
-        lambda sys_, prompt, model, timeout: called.append(model) or (model, f"ans {model}"),
-    )
-    monkeypatch.setattr(llm, "llm_complete", lambda *a, **k: "WINNER=A\nREASON=ok")
-
-    result = llm.llm_battle(
-        "sys", "prompt",
-        model_a="opencode/deepseek-v4-flash-free",
-        model_b="zai/glm-4.7-flash",
-        judge_model="opencode/deepseek-v4-flash-free",
-    )
-
-    assert set(called) == {"opencode/deepseek-v4-flash-free", "zai/glm-4.7-flash"}
-    assert result.get("failover") in (None, False)
-    assert len(result["answers"]) == 2
-
-
 def test_model_health_reports_threshold(monkeypatch):
     from app import llm
 

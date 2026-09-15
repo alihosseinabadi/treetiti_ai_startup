@@ -16,6 +16,8 @@ from app.database import SessionLocal
 from app.llm import generate_image
 from app.models import ImagePrompt
 
+from app.agents.prompts.image import SYSTEM_PROMPT
+
 logger = logging.getLogger("treetiti.agents.image")
 
 MEDIA_DIR = Path(__file__).resolve().parents[2] / "media"
@@ -25,10 +27,7 @@ class ImageGenerationAgent(BaseAgent):
     model = "zai/glm-4.5-flash"  # verified free, fast creative prompting
     name = "Image Generation Agent"
     role = "visual art director"
-    system_prompt = """\
-You write world-class AI image prompts for TREEtiti marketing visuals.
-Style: premium, dark, cinematic, minimal — Apple/Linear/Stripe aesthetic.
-Prompts must be ready for FLUX/gemini-image models."""
+    system_prompt = SYSTEM_PROMPT
 
     def run(self, idea: str, style: str = "cinematic") -> dict[str, Any]:
         result = self.complete_json(

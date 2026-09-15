@@ -18,6 +18,8 @@ from app.agents.base import BaseAgent
 from app.database import SessionLocal
 from app.models import ResearchOpportunity
 
+from app.agents.prompts.analytics import SYSTEM_PROMPT
+
 
 def _as_dict(value: Any) -> dict[str, Any]:
     """Coerce a JSON column value (dict or JSON-encoded string) to a dict."""
@@ -36,10 +38,7 @@ class AnalyticsAgent(BaseAgent):
     model = "opencode/deepseek-v4-flash-free"  # verified free, reliable JSON/math
     name = "Analytics Agent"
     role = "data-driven marketing analyst"
-    system_prompt = """\
-You turn raw marketing data and research into clear, actionable insights for
-TREEtiti. You never invent data. You only interpret what is given, find what
-is working and what is not, and recommend the next action."""
+    system_prompt = SYSTEM_PROMPT
 
     def analyze_research(self, opportunity: dict[str, Any] | None = None) -> dict[str, Any]:
         """Take the latest research opportunity and produce an insight brief.
@@ -100,7 +99,9 @@ Respond ONLY with JSON:
                 db.commit()
         return {"opportunity": opportunity, "insight": brief}
 
-    def run(self, report_data: dict[str, Any]) -> dict[str, Any]:
+    def run(self, report_data: dict[str, Any] | None = None) -> dict[str, Any]:
+        if report_data is None:
+            report_data = {"note": "no report data available — synthesize from general knowledge"}
         result = self.complete_json(
             f"""Write TREEtiti's daily marketing report.
 
