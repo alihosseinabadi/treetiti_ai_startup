@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.agents import get_agent
 from app.config import get_settings
 from app.database import get_db
 from app.models import Lead, User
+from app.webhook_security import require_webhook_secret
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -73,8 +74,13 @@ def _save_lead(db: Session, payload: LeadCreate, qualify: bool = True) -> Lead:
 
 
 @router.post("")
-def create_lead(payload: LeadCreate, db: Annotated[Session, Depends(get_db)]) -> dict:
+def create_lead(
+    payload: LeadCreate,
+    db: Annotated[Session, Depends(get_db)],
+    x_webhook_secret: Annotated[str | None, Header()] = None,
+) -> dict:
     """Open endpoint — n8n posts form leads here."""
+    require_webhook_secret(x_webhook_secret)
     lead = _save_lead(db, payload, qualify=True)
     return _serialize(lead)
 

@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     environment: str = "development"
 
+    # --- Logging ---
+    log_level: str = "INFO"
+
     # --- LLM Brain ---
     # Provider: "opencode" (default — the same agent runtime behind this system)
     #           or "ollama" (free local fallback)
@@ -22,15 +25,23 @@ class Settings(BaseSettings):
     # opencode brain
     opencode_model: str = "opencode/deepseek-v4-flash-free"
     opencode_dir: str = "."
-    # Battle mode: two models answer, a judge picks the winner.
-    battle_mode: bool = False
-    battle_model_a: str = "opencode/deepseek-v4-flash-free"
-    battle_model_b: str = "zai/glm-4.7-flash"
-    battle_judge_model: str = "zai/glm-4.5-flash"
-    # Arena auto-failover: when a model fails N times in a row it is marked
-    # unhealthy and the arena automatically switches to the other model.
-    battle_failover: bool = True
-    battle_failover_threshold: int = 2
+
+    # --- FREE-ONLY policy (spec §30) ---
+    # When true, paid providers are permanently excluded and the Model/Tool
+    # routers raise a clear error instead of silently switching to a paid one.
+    free_only: bool = True
+    # Optional monthly budget (USD) for the later FREE_ONLY=false soft mode.
+    monthly_budget: float = 0.0
+    # When true, BaseAgent resolves models through the Model Router (capability
+    # + free-cost filters) instead of the static per-agent map in agent_models.
+    # ON since Phase 1: the core/ seed is green and the 9Router gateway is
+    # wired, so agents pick capable models that all flow through the router.
+    use_model_router: bool = True
+    # Where versioned artifacts are written (see core/artifacts).
+    artifact_dir: str = "treetiti-artifacts"
+    # Health failover: after a model fails N consecutive times it is marked
+    # unhealthy and the free-model chain skips it. Single-route, no battles.
+    failover_threshold: int = 2
 
     # Seed the business brain (services, positioning, voice) into brand memory
     # on first startup so every agent is company-aware. Disable to skip.
@@ -79,6 +90,49 @@ class Settings(BaseSettings):
         "analytics": "opencode/deepseek-v4-flash-free",
     }
 
+    # Capability tier -> verified 9Router/OmniRoute model slug (spec §6 / §7).
+    # This is the PRIMARY pool the Model Router ranks first; every slug flows
+    # through the local gateway on 127.0.0.1:20128 (prefix "router/..." in the
+    # dispatch chain). Each entry below was live-tested on 2026-09-06 and
+    # returned HTTP 200.
+    # Leg: C complex reasoning · B strong general · A fast / content.
+    router_models: dict[str, str] = {
+        # C — complex reasoning / planning / conflict (editor, qa-review)
+        "reasoning": "auto/best-reasoning",
+        # B — strong general (strategy, copy, research synthesis)
+        "strategy": "auto/best-chat",
+        "research": "auto/best-free",
+        # A — fast (content, analytics, campaigns, chat)
+        "content": "auto/best-coding",
+        "analytics": "auto/best-coding",
+        "campaign": "auto/best-coding",
+        "json": "auto/best-coding",
+        "fast": "auto/best-fast",
+        # coding + QA lean strong general
+        "coding": "auto/best-coding",
+        "qa": "auto/best-free",
+    }
+
+    # Free-model chain (strongest -> weakest, verified-live first).
+    #
+    # IMPORTANT: Groq's compound model (groq/compound = llama-4-scout +
+    # gpt-oss-120b) is the only VERIFIED-LIVE endpoint: HTTP 200 in ~1.4s.
+    # Agnes "agnes-2.5-pro" is a reasoning model but the account is currently
+    # OUT OF QUOTA (403 insufficient_user_quota). The 9Router/OmniRoute gateway
+    # slugs used to lead, but when its upstreams are unhealthy it answers every
+    # call with 502 + per-upstream error list, burning the chain budget before
+    # any working provider is reached. Gateway slugs stay as fallbacks.
+    free_model_chain: list[str] = [
+        "groq/groq/compound",          # Groq Compound direct API — VERIFIED LIVE (~1.4s)
+        "agnes/agnes-2.5-pro",         # Agnes hub direct (reasoning, quota exhausted 2026-09)
+        "router/auto/best-coding",     # gateway — general (fallback)
+        "router/auto/best-free",       # gateway — strong general
+        "router/auto/best-reasoning",  # gateway — deep reasoning
+        "router/auto/best-fast",       # gateway — speed-optimised
+        "router/oc/mimo-v2.5-free",    # gateway — MiMo V2.5
+        "opencode/deepseek-v4-flash-free",  # keyless last resort
+    ]
+
     # ollama brain (fallback)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "deepseek-r1:7b"
@@ -94,14 +148,33 @@ class Settings(BaseSettings):
     # 429/rate-limit. Mirrors the design doc (GOOGLE_API_KEY_1..3).
     google_ai_studio_key_2: str = ""
     google_ai_studio_key_3: str = ""
-    google_ai_studio_model: str = "gemini-2.5-flash"
-    # Image generation model (Nano Banana = Google's free image model on the
-    # same AI Studio key). Leave a space-separated fallback list.
-    google_ai_studio_image_model: str = "gemini-2.5-flash-image"
+    google_ai_studio_model: str = "gemini-3.6-flash"  # gemini-2.5-flash retired 2026-09
+    # Image generation model — nano-banana-pro-preview = Google's free image model
+    # on the same AI Studio key. Leave a space-separated fallback list.
+    google_ai_studio_image_model: str = "nano-banana-pro-preview"
     groq_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "groq/compound"  # llama-3.3-70b-versatile retired; compound verified live 2026-09
     openrouter_key: str = ""
-    openrouter_model: str = "deepseek/deepseek-v4-flash:free"
+    openrouter_model: str = "qwen/qwen-2.5-coder-32b-instruct"
+    # OpenRouter is WAF/geo-blocked on some networks ("Access denied by security
+    # policy" — returned even for unauthenticated requests). Route OpenRouter
+    # traffic through OPENROUTER_BASE_URL (a mirror / the local 9Router gateway)
+    # and/or tunnel it via OPENROUTER_PROXY (mirrors TELEGRAM_PROXY).
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_proxy: str = ""
+    # DeepInfra — text + image + video, OpenAI-compatible. Verified live.
+    deepinfra_key: str = ""
+    deepinfra_model: str = "deepseek-ai/DeepSeek-V3"
+    # Agnes AI — OpenAI-compatible hub (image/video/audio). Verified live.
+    agnes_key: str = ""
+    agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
+    agnes_model: str = "agnes-2.5-pro"
+    agnes_image_model: str = "agnes-image-2.1-flash"
+    agnes_video_model: str = "agnes-video-v2.0"
+    # 9Router — LOCAL gateway routing 100+ cloud models. IPv4 literal:
+    # in this WSL env "localhost" resolves to ::1 where nothing listens.
+    router_base_url: str = "http://127.0.0.1:20128/v1"
+    router_key: str = ""
     # Per-key daily rate limits (requests) from the design doc. When a provider
     # key is exhausted the client fails over instead of erroring.
     rate_limit_openrouter_daily: int = 50
@@ -118,6 +191,12 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me-in-prod"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
+
+    # --- Webhook shared secret ---
+    # When set, public state-changing webhooks (POST /leads,
+    # /webhooks/publish, /webhooks/notify) require the X-Webhook-Secret
+    # header to match. Leave empty ONLY for local development.
+    webhook_shared_secret: str = ""
 
     # --- n8n ---
     n8n_url: str = "http://localhost:5678"

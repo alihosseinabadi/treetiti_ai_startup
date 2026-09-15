@@ -18,6 +18,7 @@ from app.database import get_db
 from app.models import ContentItem, User
 from app.services.email import email_html, send_email
 from app.services.social import _telegram_api, handle_telegram_update
+from app.webhook_security import require_webhook_secret
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -53,12 +54,14 @@ def publish_content(
     content_id: str,
     payload: PublishRequest,
     db: Annotated[Session, Depends(get_db)],
+    x_webhook_secret: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Publish an approved content item to a channel (free channels only).
 
     telegram: posts to the configured chat. Other channels are stubbed for n8n
     (LinkedIn/Instagram require OAuth).
     """
+    require_webhook_secret(x_webhook_secret)
     item = db.get(ContentItem, content_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Content not found")
@@ -117,9 +120,13 @@ class NotifyRequest(BaseModel):
 
 
 @router.post("/notify")
-def notify_email(payload: NotifyRequest) -> dict:
+def notify_email(
+    payload: NotifyRequest,
+    x_webhook_secret: Annotated[str | None, Header()] = None,
+) -> dict:
     """Send a brand-style email notification. Called by n8n workflows so they
     can notify you without Telegram (leads, daily report, content ready, …)."""
+    require_webhook_secret(x_webhook_secret)
     html = email_html(payload.title or payload.subject, payload.rows)
     ok = send_email(payload.subject, html, body_text=payload.text)
     if not ok:
