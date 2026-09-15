@@ -14,6 +14,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.venv-win/
 
 # ===== Node =====
 node_modules/
@@ -37,9 +38,11 @@ drafts/
 media/
 logs/
 *.log
+*.db
+treetiti-artifacts/
 
 # ===== Misc =====
 .vite/
 
 # ===== Kimi bridge automation =====
-.kimi-bridge-state
+.kimi-bridge-state*.db-journal
