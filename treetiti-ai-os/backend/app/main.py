@@ -64,6 +64,14 @@ def create_app() -> FastAPI:
     def health() -> dict:
         return {"status": "ok", "app": settings.app_name}
 
+    @app.get("/os", tags=["system"], include_in_schema=False)
+    def os_dashboard():
+        """Serve the static HTML OS dashboard (same-origin, no CORS needed)."""
+        from fastapi.responses import FileResponse
+
+        html = Path(__file__).resolve().parents[2] / "os_dashboard.html"
+        return FileResponse(str(html), media_type="text/html")
+
     api_prefix = settings.api_prefix
     app.include_router(auth.router, prefix=api_prefix)
     app.include_router(chat.router, prefix=api_prefix)

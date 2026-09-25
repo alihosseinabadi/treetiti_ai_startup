@@ -138,6 +138,7 @@ class Settings(BaseSettings):
         "router/oc/mimo-v2.5-free",    # gateway - MiMo V2.5
         "groq/groq/compound",          # 403 on 2026-09-15 - rotate key / check region
         "agnes/agnes-2.5-pro",         # 403 out-of-quota on 2026-09-15 - top up or drop
+        "pollinations/openai",         # VERIFIED LIVE 2026-09-25 - free community tier
         "opencode/deepseek-v4-flash-free",  # keyless last resort (CLI not installed)
     ]
 
