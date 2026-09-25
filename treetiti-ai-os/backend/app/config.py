@@ -5,6 +5,7 @@ All settings are read from environment variables (.env). Free & self-hosted.
 
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -150,7 +151,9 @@ class Settings(BaseSettings):
     #   google_ai_studio_key -> powers gemini/... models
     #   groq_key             -> powers groq/... models (Llama, Qwen, etc.)
     #   openrouter_key       -> powers openrouter/... models (DeepSeek free, etc.)
-    google_ai_studio_key: str = ""
+    google_ai_studio_key: str = Field(
+        default="", validation_alias=AliasChoices("google_ai_studio_key", "gemini_api_key")
+    )
     # Rotating Google keys for AI Studio free tier — the client rotates keys on
     # 429/rate-limit. Mirrors the design doc (GOOGLE_API_KEY_1..3).
     google_ai_studio_key_2: str = ""
@@ -159,9 +162,13 @@ class Settings(BaseSettings):
     # Image generation model — nano-banana-pro-preview = Google's free image model
     # on the same AI Studio key. Leave a space-separated fallback list.
     google_ai_studio_image_model: str = "nano-banana-pro-preview"
-    groq_key: str = ""
+    groq_key: str = Field(
+        default="", validation_alias=AliasChoices("groq_key", "groq_api_key")
+    )
     groq_model: str = "groq/compound"  # llama-3.3-70b-versatile retired; compound verified live 2026-09
-    openrouter_key: str = ""
+    openrouter_key: str = Field(
+        default="", validation_alias=AliasChoices("openrouter_key", "openrouter_api_key")
+    )
     openrouter_model: str = "qwen/qwen-2.5-coder-32b-instruct"
     # OpenRouter is WAF/geo-blocked on some networks ("Access denied by security
     # policy" — returned even for unauthenticated requests). Route OpenRouter
@@ -196,6 +203,44 @@ class Settings(BaseSettings):
     cf_key: str = ""
     cf_account_id: str = ""
     cf_model: str = "@cf/meta/llama-3.1-8b-instruct"
+    # --- Extra LLM providers (keys shared with the treetiti/.env pool) ---
+    # Each key accepts both naming styles, e.g. CEREBRAS_KEY and
+    # CEREBRAS_API_KEY, so the landing .env works for the OS untouched.
+    cerebras_key: str = Field(
+        default="", validation_alias=AliasChoices("cerebras_key", "cerebras_api_key")
+    )
+    cerebras_model: str = "llama-3.3-70b"
+    cohere_key: str = Field(
+        default="", validation_alias=AliasChoices("cohere_key", "cohere_api_key")
+    )
+    cohere_model: str = "command-r-plus-08-2024"
+    deepseek_key: str = Field(
+        default="", validation_alias=AliasChoices("deepseek_key", "deepseek_api_key")
+    )
+    deepseek_model: str = "deepseek-chat"
+    mistral_key: str = Field(
+        default="", validation_alias=AliasChoices("mistral_key", "mistral_api_key")
+    )
+    mistral_model: str = "mistral-small-latest"
+    sambanova_key: str = Field(
+        default="", validation_alias=AliasChoices("sambanova_key", "sambanova_api_key")
+    )
+    sambanova_model: str = "Meta-Llama-3.3-70B-Instruct"
+    requesty_key: str = Field(
+        default="", validation_alias=AliasChoices("requesty_key", "requesty_api_key")
+    )
+    requesty_base_url: str = "https://router.requesty.ai/v1"
+    requesty_model: str = "openai/gpt-4o-mini"
+    # OmniRoute local gateway key (OMNIROUTE_API_KEY in the shared pool).
+    omnirouter_key: str = Field(
+        default="", validation_alias=AliasChoices("omnirouter_key", "omnirouter_api_key")
+    )
+    omnirouter_base_url: str = "http://127.0.0.1:20128/v1"
+    omnirouter_model: str = "auto"
+    pollinations_key: str = Field(
+        default="", validation_alias=AliasChoices("pollinations_key", "pollinations_api_key")
+    )
+    pollinations_model: str = "openai"
     # Per-key daily rate limits (requests) from the design doc. When a provider
     # key is exhausted the client fails over instead of erroring.
     rate_limit_openrouter_daily: int = 50
@@ -204,6 +249,14 @@ class Settings(BaseSettings):
     rate_limit_nim_daily: int = 2000
     rate_limit_zai_daily: int = 4000
     rate_limit_cf_daily: int = 10000
+    rate_limit_cerebras_daily: int = 1000
+    rate_limit_cohere_daily: int = 1000
+    rate_limit_deepseek_daily: int = 1000
+    rate_limit_mistral_daily: int = 1000
+    rate_limit_sambanova_daily: int = 1000
+    rate_limit_requesty_daily: int = 1000
+    rate_limit_omnirouter_daily: int = 10000
+    rate_limit_pollinations_daily: int = 3000
 
     # --- Database (PostgreSQL + pgvector) ---
     database_url: str = "postgresql+psycopg://treetiti:treetiti@localhost:5432/treetiti_ai_os"
@@ -272,6 +325,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,
     )
 
 

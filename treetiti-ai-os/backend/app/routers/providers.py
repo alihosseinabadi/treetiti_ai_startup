@@ -118,6 +118,14 @@ def usage(_: Annotated[User, Depends(get_current_user)]) -> dict:
         ("openrouter", "openrouter_key"),
         ("google", "google_ai_studio_key"),
         ("router", "router_key"),
+        ("cerebras", "cerebras_key"),
+        ("cohere", "cohere_key"),
+        ("deepseek", "deepseek_key"),
+        ("mistral", "mistral_key"),
+        ("sambanova", "sambanova_key"),
+        ("requesty", "requesty_key"),
+        ("omnirouter", "omnirouter_key"),
+        ("pollinations", "pollinations_key"),
     ):
         secret = getattr(s, key_field, "") or ""
         if not secret:

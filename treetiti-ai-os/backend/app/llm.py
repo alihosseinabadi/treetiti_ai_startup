@@ -247,6 +247,15 @@ _PROVIDER_ENDPOINTS: dict[str, tuple[str, str]] = {
     "glm": ("https://api.z.ai/api/paas/v4", "zai_key"),
     # Cloudflare Workers AI — base URL needs the account id (built below).
     "cf": ("https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", "cf_key"),
+    # Extra OpenAI-compatible providers (keys shared with the treetiti/.env pool).
+    "cerebras": ("https://api.cerebras.ai/v1", "cerebras_key"),
+    "cohere": ("https://api.cohere.com/compatibility/v1", "cohere_key"),
+    "deepseek": ("https://api.deepseek.com/v1", "deepseek_key"),
+    "mistral": ("https://api.mistral.ai/v1", "mistral_key"),
+    "sambanova": ("https://api.sambanova.ai/v1", "sambanova_key"),
+    "requesty": ("https://router.requesty.ai/v1", "requesty_key"),
+    "omnirouter": ("http://127.0.0.1:20128/v1", "omnirouter_key"),
+    "pollinations": ("https://text.pollinations.ai/openai", "pollinations_key"),
 }
 
 
@@ -290,6 +299,10 @@ def _openai_compatible(
         base = settings.router_base_url
     elif provider == "openrouter":
         base = settings.openrouter_base_url
+    elif provider == "requesty":
+        base = settings.requesty_base_url
+    elif provider == "omnirouter":
+        base = settings.omnirouter_base_url
     elif provider == "cf":
         # Workers AI endpoint is namespaced per account:
         # /client/v4/accounts/{ACCOUNT_ID}/ai/v1
@@ -930,6 +943,10 @@ def _provider_base_and_key(provider: str) -> tuple[str, str]:
         base = settings.router_base_url
     elif provider == "openrouter":
         base = settings.openrouter_base_url
+    elif provider == "requesty":
+        base = settings.requesty_base_url
+    elif provider == "omnirouter":
+        base = settings.omnirouter_base_url
     return base, (getattr(settings, key_field, "") or "")
 
 

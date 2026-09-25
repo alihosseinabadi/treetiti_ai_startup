@@ -61,6 +61,22 @@ def daily_limit(provider: str) -> int:
         return s.rate_limit_zai_daily
     if provider == "cf":
         return s.rate_limit_cf_daily
+    if provider == "cerebras":
+        return s.rate_limit_cerebras_daily
+    if provider == "cohere":
+        return s.rate_limit_cohere_daily
+    if provider == "deepseek":
+        return s.rate_limit_deepseek_daily
+    if provider == "mistral":
+        return s.rate_limit_mistral_daily
+    if provider == "sambanova":
+        return s.rate_limit_sambanova_daily
+    if provider == "requesty":
+        return s.rate_limit_requesty_daily
+    if provider == "omnirouter":
+        return s.rate_limit_omnirouter_daily
+    if provider == "pollinations":
+        return s.rate_limit_pollinations_daily
     # google: effectively unlimited for a single agency MVP (thousands/day).
     return 10_000_000
 

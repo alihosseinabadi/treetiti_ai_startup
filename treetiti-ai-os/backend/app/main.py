@@ -47,10 +47,17 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:8000",
+            "http://localhost:8001",
+            "http://localhost:5678",
+            settings.public_base_url.rstrip("/"),
+        ],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Webhook-Secret", "X-Telegram-Bot-Api-Secret-Token"],
     )
 
     @app.get("/health", tags=["system"])

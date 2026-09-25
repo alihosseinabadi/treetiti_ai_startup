@@ -36,6 +36,14 @@ _PROVIDER_TIERS = {
     "nim": COST_FREE,
     "glm": COST_FREE,
     "cf": COST_FREE,
+    "cerebras": COST_FREE,
+    "cohere": COST_FREE,
+    "deepseek": COST_PAID,
+    "mistral": COST_PAID,
+    "sambanova": COST_FREE,
+    "requesty": COST_PAID,
+    "omnirouter": COST_FREE,
+    "pollinations": COST_FREE,
     "openrouter": COST_PAID,  # `:free` variants override this below
 }
 

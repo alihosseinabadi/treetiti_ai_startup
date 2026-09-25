@@ -27,6 +27,14 @@ def main() -> None:
         ("nim/meta/llama-3.3-70b-instruct", settings.nim_key, "NVIDIA NIM free"),
         ("glm/glm-4-flash", settings.zai_key, "Z.ai GLM free"),
         ("cf/@cf/meta/llama-3.1-8b-instruct", settings.cf_key, "Cloudflare free"),
+        ("cerebras/llama-3.3-70b", settings.cerebras_key, "Cerebras fast"),
+        ("cohere/command-r-plus-08-2024", settings.cohere_key, "Cohere Command"),
+        ("deepseek/deepseek-chat", settings.deepseek_key, "DeepSeek V3"),
+        ("mistral/mistral-small-latest", settings.mistral_key, "Mistral Small"),
+        ("sambanova/Meta-Llama-3.3-70B-Instruct", settings.sambanova_key, "SambaNova free"),
+        ("requesty/openai/gpt-4o-mini", settings.requesty_key, "Requesty router"),
+        ("omnirouter/auto", settings.omnirouter_key, "OmniRoute gateway"),
+        ("pollinations/openai", settings.pollinations_key, "Pollinations free"),
     ]
     print(f"{'MODEL':<60} {'STATUS':<12} {'LATENCY':<10} NOTE")
     print("-" * 110)
@@ -38,8 +46,12 @@ def main() -> None:
         try:
             out = _dispatch_provider("you are a test bot", "reply with exactly: OK", model, 0.1, 60)
             ms = int((time.time() - t0) * 1000)
-            ok = "OK" if out and "OK" in out else "ODD"
-            print(f"{model:<60} {ok:<12} {ms:>4}ms  {note}  -> {out.strip()[:20]!r}")
+            if out and "OK" in out:
+                print(f"{model:<60} {'OK':<12} {ms:>4}ms  {note}  -> {out.strip()[:20]!r}")
+            elif out is None:
+                print(f"{model:<60} {'EMPTY':<12} {ms:>4}ms  {note}  (empty reply — chain exhausted)")
+            else:
+                print(f"{model:<60} {'ODD':<12} {ms:>4}ms  {note}  -> {out.strip()[:20]!r}")
         except Exception as exc:  # noqa: BLE001
             ms = int((time.time() - t0) * 1000)
             msg = str(exc).split("\n")[0][:70]
