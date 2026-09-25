@@ -1,0 +1,61 @@
+{
+  "name": "Daily Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Daily 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agents/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.API_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"agent\": \"analytics\",\n  \"payload\": {\n    \"report_data\": {}\n  }\n}"
+      },
+      "id": "analytics",
+      "name": "Run Analytics Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/webhooks/notify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subject\": \"[TREEtiti] Daily Report\",\n  \"title\": \"TREEtiti Daily Report\",\n  \"rows\": [\n    [\"Report\", \"{{ $json.result.report_text }}\"]\n  ]\n}"
+      },
+      "id": "email",
+      "name": "Send Report by Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    }
+  ],
+  "connections": {
+    "Daily 18:00": { "main": [[{ "node": "Run Analytics Agent", "type": "main", "index": 0 }]] },
+    "Run Analytics Agent": { "main": [[{ "node": "Send Report by Email", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

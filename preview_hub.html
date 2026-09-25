@@ -1,0 +1,46 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Treetiti – All Pages Preview Hub</title>
+<style>body{font-family:system-ui;background:#0a0a0a;color:#eee;margin:0;padding:32px}h1{font-size:28px}a{color:#6ea8ff}section{background:#141414;border:1px solid #2a2a2a;border-radius:12px;padding:16px 20px;margin:16px 0}li{margin:6px 0}code{background:#222;padding:2px 6px;border-radius:6px}.warn{background:#2a1a00;border:1px solid #6b4a00;padding:12px;border-radius:10px}</style>
+</head><body>
+<h1>Treetiti – All Pages (preview hub)</h1>
+<div class="warn">Full Vite React run needs <b>node/npm</b> (not installed here) and the FastAPI backend needs <b>Postgres+pgvector</b>. This hub runs on Python only and lists every route with its source file + live stub API. Use it to click through all pages.</div>
+
+<section><h2>1. Main site <code>treetiti/</code> – public</h2><ul>
+<li><b>/</b> CinematicHome – <code>treetiti/src/components/cinematic/CinematicHome.tsx</code></li>
+<li><b>/start</b> Project Discovery – <code>treetiti/src/pages/StartPage.tsx</code></li>
+<li><b>/privacy</b> – <code>treetiti/src/pages/Privacy.tsx</code></li>
+<li><b>/terms</b> – <code>treetiti/src/pages/Terms.tsx</code></li>
+<li><b>/cookies</b> – <code>treetiti/src/pages/Cookies.tsx</code></li>
+<li>5 langs: <code>treetiti/src/i18n/en,fa,ru,ar,tr.ts</code> – switch via navbar (en default, fa/ar RTL)</li>
+</ul></section>
+
+<section><h2>2. Admin CRM <code>/admin/*</code> (10 pages)</h2><ul>
+<li>/admin – Dashboard <code>treetiti/src/app/admin/Dashboard.tsx</code></li>
+<li>/admin/inbox, /admin/leads, /admin/clients, /admin/projects, /admin/invoices, /admin/contracts, /admin/meetings, /admin/partners, /admin/settings, /admin/login</li>
+<li>Run: <code>cd treetiti_repo/treetiti && npm install && npm run dev</code> → http://localhost:5173</li>
+</ul></section>
+
+<section><h2>3. AI Marketing OS dashboard <code>treetiti-ai-os/frontend</code> (8 pages)</h2><ul>
+<li>/login – <code>treetiti-ai-os/frontend/src/pages/Login.tsx</code></li>
+<li>/ (Dashboard), /chat, /agents, /models, /content, /leads, /memory – see <code>src/App.tsx:76-94</code></li>
+<li>API base now env: <code>VITE_API_URL</code> (fixed). Run: <code>cd treetiti-ai-os/frontend && npm install && npm run dev</code></li>
+</ul></section>
+
+<section><h2>4. Backend API (stub live now, real needs Postgres)</h2><ul>
+<li><a href="/api/v1/health">/api/v1/health</a> – live stub</li>
+<li><a href="/api/v1/agents">/api/v1/agents</a> – 11 agents</li>
+<li><a href="/api/v1/memory/categories">/api/v1/memory/categories</a></li>
+<li>Real: <code>cd treetiti-ai-os/backend && pip install -r requirements.txt && uvicorn app.main:app</code> → <a href="http://localhost:8000/docs">localhost:8000/docs</a></li>
+</ul></section>
+
+<section><h2>5. Customer platform <code>customer_treetiti/</code></h2><ul>
+<li>POST /api/v1/onboard {link, q1..q5} → <code>customer_treetiti/directory_router.py</code></li>
+<li>GET /api/v1/directory/{id} – dossier</li>
+<li>Blueprint: <code>customer_treetiti/CUSTOMER_SERVICE_DIRECTORY.md</code></li>
+</ul></section>
+
+<section><h2>6. Source file browser</h2>
+<p>Browse raw sources from this server root: <a href="/">/</a> – e.g. <a href="/treetiti/src/App.tsx">/treetiti/src/App.tsx</a>, <a href="/treetiti-ai-os/frontend/src/App.tsx">/treetiti-ai-os/frontend/src/App.tsx</a></p>
+</section>
+</body></html>

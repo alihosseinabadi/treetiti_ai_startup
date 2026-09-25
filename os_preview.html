@@ -1,0 +1,238 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Treetiti OS — Chief of Staff</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{margin:0;background:#fff;height:100vh;overflow:hidden}
+.grid{display:grid;grid-template-columns:270px 1fr;gap:0;max-width:none;margin:0;height:100vh;align-items:stretch}
+.panel{background:#fff;border-radius:0;box-shadow:none;overflow:hidden}
+.panel:first-child{border-right:1px solid #e4e4e7}
+.search{margin:10px;background:#f1f3f6;border-radius:9px;padding:8px 10px;font-size:13px;color:#888;display:flex;gap:6px;align-items:center}
+.agent{display:flex;gap:10px;padding:8px 12px;align-items:center;cursor:pointer;border:none;background:none;width:100%;text-align:left}
+.agent.on{background:#edf0f4}
+.av{width:32px;height:32px;border-radius:50%;color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:700;flex-shrink:0}
+.nm{font-size:12.5px;font-weight:700;color:#111}.sn{font-size:11px;color:#7a7a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:135px}.tm{font-size:10px;color:#9a9a9a;margin-left:auto;flex-shrink:0}
+.chat{display:flex;flex-direction:column;height:100vh;background:#fff}
+.chead{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 0}
+.chead .t{font-size:14px;font-weight:700}
+.ctime{text-align:center;font-size:10.5px;color:#999;margin:2px 0 6px}
+.msgs{flex:1;overflow-y:auto;padding:6px 16px;display:flex;flex-direction:column;gap:10px}
+.u{align-self:flex-end;background:#1c1c1e;color:#fff;border-radius:16px 16px 4px 16px;padding:9px 13px;font-size:13px;max-width:82%}
+.a{align-self:flex-start;background:#f0f1f4;border-radius:16px 16px 16px 4px;padding:9px 13px;font-size:13px;max-width:88%;color:#111}
+.a b.agent-tag{display:block;font-size:10.5px;color:#7c3aed;margin-bottom:3px}
+.file{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #e3e3e6;border-radius:10px;padding:8px;margin-top:8px}
+.qcard{align-self:flex-start;background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:10px 12px;font-size:12px;max-width:88%;color:#111}
+.qcard input{width:100%;font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid #fed7aa;margin-top:6px}
+.qbtn{align-self:flex-start;background:#111;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer}
+.lnkrow{display:flex;gap:6px;margin-top:6px}.lnkrow input{flex:1;font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid #e5e7eb}
+.mini{font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.chip{font-size:11px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:3px 8px;display:flex;gap:5px;align-items:center}
+.chip a{color:#7c3aed;text-decoration:none}.chip button{border:none;background:none;color:#999;cursor:pointer;font-size:11px}
+.thumb{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb}
+.proj{display:flex;gap:8px;align-items:center;width:100%;border:none;background:none;text-align:left;padding:7px 12px;font-size:12.5px;cursor:pointer;color:#111}
+.proj.on{background:#eef1f5;font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(15,20,35,.45);display:none;place-items:center;z-index:50}
+.sheet{background:#fff;border-radius:16px;width:min(680px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;gap:4px;padding:10px 12px 0;border-bottom:1px solid #eee}
+.tab{border:none;background:none;font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer;color:#777;border-bottom:2px solid transparent}
+.tab.on{color:#111;border-bottom-color:#7c3aed}
+.sbody{padding:12px 16px;overflow-y:auto;font-size:13px}
+.jrow{display:flex;gap:8px;align-items:center;border:1px solid #eee;border-radius:10px;padding:8px 10px;margin:6px 0}
+.jrow small{color:#777}
+.tbtn{font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
+.tbtn.go{background:#111;color:#fff;border-color:#111}
+.tinp{font-size:12px;padding:7px 9px;border-radius:8px;border:1px solid #e5e7eb}
+select.tinp{background:#fff}
+.dot{width:8px;height:8px;border-radius:50%;background:#d4d4d8;flex-shrink:0}
+.dot.work{background:#22c55e;animation:pulse 1s infinite}
+.dot.done{background:#22c55e}
+@keyframes pulse{50%{opacity:.3}}
+.inp{display:flex;gap:8px;align-items:center;border-top:1px solid #eee;padding:10px}
+.inp input{flex:1;border:none;outline:none;font-size:13px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.grid .panel:first-child{display:none}}
+</style></head><body>
+<div class="grid">
+<!-- 1. AGENTS -->
+<div class="panel" style="display:flex;flex-direction:column;height:100vh"><div style="padding:12px 12px 0;font-size:13px;font-weight:800;letter-spacing:.08em">TREETITI <span style="color:#7c3aed">OS</span></div><div class="search">⌕&nbsp;Search</div>
+<div style="padding:2px 0 6px;border-bottom:1px solid #eee"><div style="font-size:10.5px;color:#999;padding:2px 12px;letter-spacing:.06em">PROJECTS</div><div id="projects"></div>
+<button class="proj" onclick="newProject()" style="color:#7c3aed">＋ New project</button></div>
+<div id="agents" style="flex:1;overflow-y:auto"></div>
+<div style="border-top:1px solid #eee;padding:10px 12px;font-size:12px;color:#555;display:flex;gap:6px">
+<button class="tbtn" onclick="openSheet('sched')">⏰ Schedules</button>
+<button class="tbtn" onclick="openSheet('plug')">🔌 Plugins</button>
+</div>
+<div style="padding:0 12px 10px;font-size:12px;color:#555;display:flex;gap:8px;align-items:center"><span class="av" style="background:#333">AC</span><b style="color:#111">Alex Chen</b></div></div>
+<!-- 2. CHAT -->
+<div class="panel chat"><div class="chead"><span style="color:#999">‹&nbsp;&nbsp;›</span><span class="t" id="title">Chief of Staff</span><span style="color:#999">⧉&nbsp;☆&nbsp;⬆</span></div>
+<div class="ctime">9:41 AM</div><div class="msgs" id="msgs"></div>
+<form class="inp" onsubmit="send(event)"><span style="color:#999;font-size:18px">＋</span>
+<input id="t" placeholder="Message Chief of Staff"/><span style="color:#999">🎙</span>
+<button style="border:none;background:#111;color:#fff;border-radius:50%;width:30px;height:30px;cursor:pointer">↑</button></form></div>
+</div>
+<div class="overlay" id="sheet"><div class="sheet">
+<div class="tabs"><button class="tab" id="tab-sched" onclick="showTab('sched')">⏰ Schedules</button>
+<button class="tab" id="tab-proj" onclick="showTab('proj')">📁 Projects</button>
+<button class="tab" id="tab-plug" onclick="showTab('plug')">🔌 Plugins</button>
+<span style="flex:1"></span><button class="tbtn" onclick="closeSheet()">✕</button></div>
+<div class="sbody" id="sbody"></div></div></div>
+<script>
+const API='http://localhost:8000/api/v1';let TOK=null;
+async function boot(){try{const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@treetiti.com',password:'admin123'})});
+TOK=(await r.json()).access_token;loadProjects();}catch(e){console.warn('backend offline',e);}}
+async function api(path,body,method){const r=await fetch(API+path,{method:method||(body?'POST':'GET'),
+headers:{'Content-Type':'application/json',...(TOK?{Authorization:'Bearer '+TOK}:{})},
+body:body?JSON.stringify(body):undefined});if(!r.ok)throw new Error(await r.text());return r.json();}
+let curProj=null,projList=[];
+async function loadProjects(){try{projList=await api('/projects');}catch{projList=[];}renderProjects();}
+function renderProjects(){const box=document.getElementById('projects');box.innerHTML='';
+const all=document.createElement('button');all.className='proj'+(!curProj?' on':'');all.textContent='💬 All chats';
+all.onclick=()=>{curProj=null;renderProjects();};box.appendChild(all);
+projList.forEach(p=>{const b=document.createElement('button');b.className='proj'+(curProj===p.id?' on':'');
+b.innerHTML=`📁 <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${text(p.name)}</span><small style="color:#999">${p.memories}🧠</small>`;
+b.onclick=()=>{curProj=p.id;renderProjects();};box.appendChild(b);});}
+async function newProject(){const n=prompt('Project name:');if(!n||!n.trim())return;
+const d=prompt('Description (optional):')||'';
+try{const p=await api('/projects',{name:n.trim(),description:d});curProj=p.id;await loadProjects();}catch(e){alert('Failed: '+e.message);}}
+function openSheet(tab){document.getElementById('sheet').style.display='grid';showTab(tab);}
+function closeSheet(){document.getElementById('sheet').style.display='none';}
+async function showTab(t){['sched','proj','plug'].forEach(k=>document.getElementById('tab-'+k).classList.toggle('on',k===t));
+const b=document.getElementById('sbody');b.innerHTML='Loading…';
+try{if(t==='sched')await renderSched(b);else if(t==='proj')await renderProjTab(b);else await renderPlug(b);}catch(e){b.innerHTML='Failed: '+text(e.message);}}
+async function renderSched(b){const jobs=await api('/agents/schedule');
+let h=`<div style="color:#555;margin-bottom:6px">Agents run <b>automatically</b> on these schedules (autopilot ticks every 20s). New chats you start don't affect them.</div>`;
+jobs.forEach(j=>{h+=`<div class="jrow"><span>${j.enabled?'🟢':'⚪'}</span><span style="flex:1"><b>${text(j.agent)}</b> <small>${text(j.job_type)} ${j.job_type==='daily'?'@ '+text(j.schedule_time||''):'every '+j.interval_minutes+'m'}</small><br><small>last: ${j.last_run_at||'never'}</small></span>`
++`<button class="tbtn" onclick="runNow('${j.id}')">Run now</button>`
++`<button class="tbtn" onclick="toggleJob('${j.id}',${!j.enabled})">${j.enabled?'Pause':'Start'}</button>`
++`<button class="tbtn" onclick="delJob('${j.id}')">✕</button></div>`;});
+h+=`<div class="jrow"><select class="tinp" id="nj-agent">${['content','pipeline','publish','sales','analytics','video','image','market_research'].map(a=>`<option>${a}</option>`).join('')}</select>`
++`<select class="tinp" id="nj-type"><option value="daily">daily</option><option value="interval">interval</option></select>`
++`<input class="tinp" id="nj-time" value="09:00" size="5" title="HH:MM"><input class="tinp" id="nj-min" value="60" size="4" title="minutes">`
++`<button class="tbtn go" onclick="addJob()">+ Schedule</button></div>`;
+b.innerHTML=h;}
+async function addJob(){const g=id=>document.getElementById(id).value;
+await api('/agents/schedule',{agent:g('nj-agent'),job_type:g('nj-type'),schedule_time:g('nj-time'),interval_minutes:+g('nj-min')||60,payload:{}});showTab('sched');}
+async function toggleJob(id,en){await api('/agents/schedule/'+id,{enabled:en},'PATCH');showTab('sched');}
+async function delJob(id){if(!confirm('Delete schedule?'))return;await api('/agents/schedule/'+id,null,'DELETE');showTab('sched');}
+async function runNow(id){await api('/agents/run-now/'+id,{});alert('Triggered — see /agents/runs for the result.');}
+async function renderProjTab(b){await loadProjects();
+let h=`<div style="color:#555;margin-bottom:6px">Save a project once — every chat and memory inside it is <b>always remembered</b> like ChatGPT projects.</div>`;
+projList.forEach(p=>{h+=`<div class="jrow"><span style="flex:1"><b>${text(p.name)}</b><br><small>${p.memories} memories • ${p.sessions} sessions • ${text(p.description||'')}</small></span>`
++`<button class="tbtn" onclick="viewMems('${p.id}','${text(p.name).replace(/'/g,'')}')">Memories</button>`
++`<button class="tbtn" onclick="delProj('${p.id}')">✕</button></div>`;});
+h+=`<button class="tbtn go" onclick="newProject();showTab('proj')">＋ New project</button><div id="mems" style="margin-top:8px"></div>`;b.innerHTML=h;}
+async function viewMems(id,name){const m=await api(`/projects/${id}/memories?limit=20`);
+document.getElementById('mems').innerHTML=`<b>${text(name)} memories:</b>`+(m.length?m.map(x=>`<div class="jrow"><small>[${x.kind}] ${text(x.title||'')} — ${text((x.content||'').slice(0,120))}</small></div>`).join(''):'<div style="color:#888">none yet</div>');}
+async function delProj(id){if(!confirm('Delete project? (chats keep history)'))return;await api('/projects/'+id,null,'DELETE');curProj=null;await loadProjects();showTab('proj');}
+async function renderPlug(b){const plugs=await api('/orchestrator/plugins');
+let h=`<div style="color:#555;margin-bottom:6px">Plug stuff in: toggle agents, or add any webhook as a plugin. Disabled plugins are skipped by runs.</div>`;
+plugs.forEach(p=>{h+=`<div class="jrow"><span>${p.enabled?'🟢':'⚪'}</span><span style="flex:1"><b>${text(p.label)}</b> <small>${p.kind}${p.kind==='webhook'?' • '+text((p.config||{}).url||''):''}</small><br><small>${text(p.blurb||'')}</small></span>`
++(p.key==='campaign'?`<small>always on</small>`:`<button class="tbtn" onclick="togglePlug('${p.key}',${!p.enabled})">${p.enabled?'Disable':'Enable'}</button>`)
++(p.kind==='webhook'?`<button class="tbtn" onclick="delPlug('${p.key}')">✕</button>`:'')+`</div>`;});
+h+=`<div class="jrow"><input class="tinp" id="np-key" placeholder="key e.g. my_crm"><input class="tinp" id="np-label" placeholder="Label"><input class="tinp" id="np-url" placeholder="https://…hook" style="flex:1">`
++`<button class="tbtn go" onclick="addPlug()">+ Plug in</button></div>`;b.innerHTML=h;}
+async function togglePlug(k,en){await api('/orchestrator/plugins/'+k,{enabled:en},'PATCH');showTab('plug');}
+async function addPlug(){const g=id=>document.getElementById(id).value;
+await api('/orchestrator/plugins',{key:g('np-key'),label:g('np-label'),url:g('np-url')});showTab('plug');}
+async function delPlug(k){if(!confirm('Remove plugin?'))return;await api('/orchestrator/plugins/'+k,null,'DELETE');showTab('plug');}
+boot();
+</script>
+<script>
+const A=[
+["Chief of Staff","#7c3aed","CS","Got it! Product updates share...","7:34 PM","campaign"],
+["EA","#3b82f6","EA","Responded in 3 threads, with...","","developer"],
+["Inbox Manager","#0ea5e9","IM","Inbox at zero. 2 replies ready.","7:34 PM","leads"],
+["Sales Outbound","#f59e0b","SO","Outreach drafts queued for ap...","6:41 AM","sales"],
+["Talent Scout","#92400e","TS","Shortlist of 6 candidates re...","6:22 AM","market_research"],
+["Growth Marketer","#16a34a","GM","A/B copy variants ready to revi...","6:05 AM","content"],
+["Customer Support","#ef4444","CS","12 tickets resolved, 2 escalate...","Yesterday","support"],
+["Expense Manager","#f97316","EM","Receipts coded — one needs a lo...","Yesterday","analytics"],
+["Invoice Collector","#eab308","IC","Pulled 9 invoices from vendor...","Tuesday","invoices"],
+["Apartment Hunter","#10b981","AH","3 new listings match your filters.","Tuesday","hunter"],
+["Brand Guard","#8b5cf6","BG","Voice audit passed, 9.1/10.","","brand"],
+["Video Director","#ec4899","VD","Storyboard queued for review.","","video"],
+["Visual Designer","#06b6d4","VD","Hero concepts ready.","","image"],
+["SEO Specialist","#22c55e","SE","Meta + schema shipped.","","seo"],
+["Editor / QA","#64748b","QA","2 approved, 1 sent back.","","editor"]];
+let cur=0,run=null;
+const ag=document.getElementById('agents');
+A.forEach((a,i)=>{const b=document.createElement('button');b.className='agent'+(i?'':' on');
+b.innerHTML=`<span class="av" style="background:${a[1]}">${a[2]}</span><span><div class="nm">${a[0]}</div><div class="sn">${a[3]}</div></span><span class="dot" id="dot-${i}"></span><span class="tm">${a[4]}</span>`;
+b.onclick=()=>{cur=i;document.querySelectorAll('.agent').forEach((x,j)=>x.classList.toggle('on',j===i));
+document.getElementById('title').textContent=a[0];document.getElementById('t').placeholder='Message '+a[0];};ag.appendChild(b);});
+const msgs=document.getElementById('msgs');
+function bub(who,html,tag){const d=document.createElement('div');d.className=who;
+d.innerHTML=(who==='a'&&tag?`<b class="agent-tag">${tag}</b>`:'')+html;msgs.appendChild(d);msgs.scrollTop=1e6;return d;}
+function text(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+bub('u',"Hey, what's the latest update we have on Brightside Health?");
+bub('a',"From last meeting's call notes, they need to see support for Slack integration and SSO before they proceed with a pilot."+`<div class="file"><span style="background:#ef4444;color:#fff;border-radius:6px;font-size:10px;padding:4px 6px;font-weight:800">PDF</span><span><div style="font-size:12px;font-weight:700">Kickoff Agenda.pdf</div><div style="font-size:11px;color:#777">12 pages • 1.2 MB</div></span></div>`);
+bub('a',"PS: plan and Brightside Health's account notes in CRM are up to date with the latest.");
+bub('a',"Perfect, those shipped last week, post an update to let them know");
+bub('u',"Got it! Product updates shared and linked in #brightside-shared slack channel");
+/* api() with auth is defined in the header script above */
+/* questions render INLINE in chat — each accepts text + links + pictures/files, mixed into the run */
+const attach={};
+function chipsHTML(slot){const a=attach[slot];if(!a)return'';
+return `<div class="chips">`+
+a.links.map((l,i)=>`<span class="chip">🔗 <a href="${text(l)}" target="_blank">${text(shortUrl(l))}</a><button onclick="rmLink('${slot}',${i})">✕</button></span>`).join('')+
+a.files.map((f,i)=>`<span class="chip">${f.url?`<img class="thumb" src="${f.url}">`:'📎'} ${text(f.name)}<button onclick="rmFile('${slot}',${i})">✕</button></span>`).join('')+`</div>`;}
+function shortUrl(u){try{const x=new URL(u);return x.hostname+x.pathname.slice(0,24);}catch{return u.slice(0,32);}}
+function refreshChips(slot){const el=document.getElementById('chips-'+slot);if(el)el.innerHTML=chipsHTML(slot).replace(/^<div class="chips">|<\/div>$/g,'');}
+function addLink(slot){const inp=document.getElementById('lnk-'+slot);let v=(inp.value||'').trim();if(!v)return;
+if(!/^https?:\/\//i.test(v))v='https://'+v;attach[slot].links.push(v);inp.value='';refreshChips(slot);}
+function addFiles(slot,input){[...input.files].forEach(f=>{attach[slot].files.push({name:f.name,size:f.size,
+url:f.type.indexOf('image/')===0?URL.createObjectURL(f):null});});input.value='';refreshChips(slot);}
+function rmLink(slot,i){attach[slot].links.splice(i,1);refreshChips(slot);}
+function rmFile(slot,i){attach[slot].files.splice(i,1);refreshChips(slot);}
+function renderQs(p){document.querySelectorAll('.qcard,.qbtn').forEach(e=>e.remove());
+if(!p.pending_questions.length){if(p.status==='done')bub('a',`Dossier ready — ${p.steps.filter(s=>s.result).length} agents delivered. Editor/QA gated.`,'Chief of Staff');return;}
+const ids=[];
+p.pending_questions.forEach((q,i)=>{attach[q.slot]={links:[],files:[]};
+const d=document.createElement('div');d.className='qcard';
+const id='qa'+Date.now()+i;ids.push([q.slot,id]);
+d.innerHTML=`<b style="color:#9a3412;font-size:11px">${text(q.agent)}</b><div>${text(q.question)}</div>`
++`<input id="${id}" placeholder="Type answer…">`
++`<div class="lnkrow"><input id="lnk-${q.slot}" placeholder="Paste link / reference URL…" onkeydown="if(event.key==='Enter'){event.preventDefault();addLink('${q.slot}')}">`
++`<button class="mini" onclick="addLink('${q.slot}')">+ Link</button>`
++`<label class="mini" style="display:inline-block">+ Picture / file<input type="file" style="display:none" multiple accept="image/*,.pdf,.doc,.docx,.txt,.md" onchange="addFiles('${q.slot}',this)"></label></div>`
++`<div class="chips" id="chips-${q.slot}"></div>`;
+msgs.appendChild(d);});
+const btn=document.createElement('button');btn.className='qbtn';btn.textContent='Send answers → run agents';
+btn.onclick=()=>{const ans={},parts=[];
+ids.forEach(([slot,id])=>{const t=document.getElementById(id).value.trim();const a=attach[slot]||{links:[],files:[]};
+const mix=[t,...a.links.map(l=>`[link: ${l}]`),...a.files.map(f=>`[ref: ${f.name}]`)].filter(Boolean).join(' ');
+if(mix)ans[slot]=mix;
+let html=t?text(t):'';html+=a.links.map(l=>` <a href="${text(l)}" target="_blank">🔗 ${text(shortUrl(l))}</a>`).join('');
+html+=a.files.map(f=>f.url?` <img class="thumb" src="${f.url}" title="${text(f.name)}">`:` 📎 ${text(f.name)}`).join('');
+if(html)parts.push(`<b>${text(slot)}</b>: ${html}`);});
+document.querySelectorAll('.qcard,.qbtn').forEach(e=>e.remove());
+const d=document.createElement('div');d.className='u';d.innerHTML=parts.join('<br>')||'Answered';msgs.appendChild(d);msgs.scrollTop=1e6;
+answer(ans);};
+msgs.appendChild(btn);msgs.scrollTop=1e6;}
+async function send(e){e.preventDefault();const inp=document.getElementById('t');const goal=inp.value.trim();if(!goal)return;inp.value='';resetDots();bub('u',text(goal));
+try{const p=await api('/orchestrator/plan',{goal,project_id:curProj});run=p;
+if(p.status==='ready'){bub('a','Plan ready — running all '+p.steps.length+' agents…','Chief of Staff');exec(p.run_id);}
+else{bub('a',`Got it. ${p.pending_questions.length} quick question(s) before the team runs:`,'Chief of Staff');renderQs(p);}}
+catch{localPlan(goal);}}
+function localPlan(goal){const g=goal.toLowerCase(),qs=[];
+if(g.indexOf('instagram')<0&&g.indexOf('linkedin')<0&&g.indexOf(' all ')<0)qs.push({step:'content',agent:'Growth Marketer',slot:'platform',question:'Which platform should this target?'});
+if(!/luxury|bold|friendly|minimal|premium/.test(g))qs.push({step:'content',agent:'Growth Marketer',slot:'tone',question:'What tone?'});
+if(!/founder|cmo|audience|customer/.test(g))qs.push({step:'sales',agent:'Sales Outbound',slot:'audience',question:'Who exactly is this for?'});
+run={run_id:'local',status:qs.length?'awaiting_answers':'ready',steps:[],pending_questions:qs};
+if(qs.length){bub('a',`On it. ${qs.length} quick question(s) first so the team nails it:`,'Chief of Staff');renderQs(run);}
+else bub('a','On it — running the team (offline demo).','Chief of Staff');}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function setDot(key,st){const i=A.findIndex(a=>a[5]===key);if(i<0)return;
+const el=document.getElementById('dot-'+i);if(el)el.className='dot '+(st==='idle'?'':st);}
+function resetDots(){A.forEach((_,i)=>{const el=document.getElementById('dot-'+i);if(el)el.className='dot';});}
+async function exec(rid){try{const d=await api('/orchestrator/execute',{run_id:rid});run=d;
+const steps=d.steps.filter(s=>s.result);
+bub('a',`Running ${steps.length} agents — watch the green dots on their side.`,'Chief of Staff');
+for(const s of steps){setDot(s.key,'work');await sleep(650);
+bub('a',text(String(s.result).slice(0,280)),s.label);setDot(s.key,'done');}
+renderQs(d);}catch(err){bub('a','Execute blocked: '+text(err.message),'Chief of Staff');}}
+async function answer(ans){if(!run||run.run_id==='local'){run.pending_questions=[];run.status='ready';
+bub('a','Thanks — running the team with that.','Chief of Staff');return;}
+try{const p=await api('/orchestrator/answer',{run_id:run.run_id,answers:ans});run=p;
+if(p.status==='ready'){bub('a','All answers in — agents running now.','Chief of Staff');exec(p.run_id);}
+else renderQs(p);}catch(err){bub('a','Save failed: '+text(err.message),'Chief of Staff');}}
+</script></body></html>

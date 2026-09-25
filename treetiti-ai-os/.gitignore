@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Env / secrets
+.env
+.env.local
+
+# Node
+node_modules/
+dist/
+build/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# n8n local data
+.n8n/

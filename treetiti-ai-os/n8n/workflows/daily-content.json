@@ -1,0 +1,84 @@
+{
+  "name": "Daily Content — 08:00",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Daily 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agents/run",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.API_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"agent\": \"market_research\",\n  \"payload\": {}\n}"
+      },
+      "id": "research",
+      "name": "Run Market Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agents/run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{$env.API_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"agent\": \"content\",\n  \"payload\": {\n    \"opportunity\": {{ JSON.stringify($('Run Market Research').item.json.result) }},\n    \"platform\": \"linkedin\",\n    \"count\": 1,\n    \"approve\": true\n  }\n}"
+      },
+      "id": "content",
+      "name": "Create LinkedIn Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/webhooks/notify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subject\": \"[TREEtiti] New content ready — {{ $json.result[0].title }}\",\n  \"title\": \"New TREEtiti content is ready\",\n  \"rows\": [\n    [\"Title\", \"{{ $json.result[0].title }}\"],\n    [\"Platform\", \"{{ $json.result[0].platform }}\"],\n    [\"Body\", \"{{ $json.result[0].body }}\"],\n    [\"CTA\", \"{{ $json.result[0].cta }}\"]\n  ]\n}"
+      },
+      "id": "email",
+      "name": "Notify by Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [600, 0]
+    }
+  ],
+  "connections": {
+    "Daily 08:00": { "main": [[{ "node": "Run Market Research", "type": "main", "index": 0 }]] },
+    "Run Market Research": { "main": [[{ "node": "Create LinkedIn Content", "type": "main", "index": 0 }]] },
+    "Create LinkedIn Content": { "main": [[{ "node": "Notify by Email", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
