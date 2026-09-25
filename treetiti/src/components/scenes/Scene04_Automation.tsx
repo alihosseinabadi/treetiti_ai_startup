@@ -49,9 +49,9 @@ export default function Scene04_Automation() {
         const node = nodeRefs.current[i]
         if (!node) return
         gsap.fromTo(node,
-          { opacity: 0, scale: 0.4, filter: "blur(8px)" },
+          { opacity: 0, scale: 0.4 },
           {
-            opacity: 1, scale: 1, filter: "blur(0px)",
+            opacity: 1, scale: 1,
             scrollTrigger: {
               trigger: section,
               start: `${i * 12}%`,

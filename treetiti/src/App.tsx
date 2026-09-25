@@ -1,6 +1,9 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Routes, Route, useLocation } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
+import Lenis from "lenis"
+import gsap from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { useTranslation } from "react-i18next"
 import { useLanguage } from "./i18n/LanguageProvider"
 
@@ -8,9 +11,6 @@ import Navigation from "./components/Navigation"
 import FilmGrain from "./components/cinematic/FilmGrain"
 import CinematicHome from "./components/cinematic/CinematicHome"
 import Footer from "./components/Footer"
-import { ChatWidget } from "./components/widgets/ChatWidget"
-import { WhatsAppButton } from "./components/widgets/WhatsAppButton"
-import { PipCompanion } from "./components/Pip"
 import AdminRouter from "./app/admin/AdminRouter"
 import StartPage from "./pages/StartPage"
 import Privacy from "./pages/Privacy"
@@ -29,11 +29,10 @@ function AmbientBackground() {
         }}
       />
       <div
-        className="absolute top-1/4 -left-48 w-[800px] h-[800px] rounded-full"
+        className="absolute top-1/3 -left-32 w-[420px] h-[420px] rounded-full"
         style={{
           background: "radial-gradient(circle, var(--tw-orb-white) 0%, transparent 65%)",
-          filter: "blur(140px)",
-          animation: "orbDrift 50s ease-in-out infinite",
+          filter: "blur(100px)",
         }}
       />
       <div
@@ -56,11 +55,23 @@ export default function App() {
   const isStart = location.pathname === "/start"
   const { dir } = useLanguage()
 
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    const lenis = new Lenis({ lerp: 0.1, smoothWheel: true })
+    lenis.on("scroll", ScrollTrigger.update)
+    const tick = (time: number) => lenis.raf(time * 1000)
+    gsap.ticker.add(tick)
+    gsap.ticker.lagSmoothing(0)
+    return () => {
+      gsap.ticker.remove(tick)
+      lenis.destroy()
+    }
+  }, [])
+
   if (isAdmin) return <AdminRouter />
 
   return (
     <>
-      {!isAdmin && <PipCompanion />}
       {isStart ? (
         <AnimatePresence mode="wait">
           <motion.div
@@ -114,8 +125,6 @@ export default function App() {
             </main>
           </div>
           <Footer />
-          <ChatWidget />
-          <WhatsAppButton phoneNumber="971585338222" />
         </>
       )}
     </>

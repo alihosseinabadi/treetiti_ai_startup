@@ -26,9 +26,9 @@ export default function Scene05_Branding() {
 
     const ctx = gsap.context(() => {
       gsap.fromTo(textLargeRef.current,
-        { opacity: 0, x: -200, filter: "blur(8px)" },
+        { opacity: 0, x: -200 },
         {
-          opacity: 1, x: 80, filter: "blur(0px)",
+          opacity: 1, x: 80,
           scrollTrigger: {
             trigger: section,
             start: "top 80%",
@@ -41,9 +41,9 @@ export default function Scene05_Branding() {
       itemsRef.current.forEach((item, i) => {
         if (!item) return
         gsap.fromTo(item,
-          { opacity: 0, x: -30, filter: "blur(4px)" },
+          { opacity: 0, x: -30 },
           {
-            opacity: 1, x: 0, filter: "blur(0px)",
+            opacity: 1, x: 0,
             scrollTrigger: {
               trigger: section,
               start: `top ${75 - i * 5}%`,

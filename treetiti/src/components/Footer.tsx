@@ -5,8 +5,8 @@ import { useLanguage } from "../i18n/LanguageProvider";
 import { buttonTap, springBounce } from "../constants/animations";
 import { Mail, MessageCircle } from "lucide-react";
 
-const CONTACT_EMAIL = "hellotreetiti@gmail.com";
-const UA_WHATSAPP = "971585338222";
+const CONTACT_EMAIL = "brandingtreetiti@gmail.com";
+const UA_WHATSAPP = "79990004136";
 const RU_WHATSAPP = "79990004136";
 
 const socials = [
@@ -22,7 +22,7 @@ export default function Footer() {
   const isHome = location.pathname === "/";
 
   const whatsappNumber = lang === "ru" ? RU_WHATSAPP : UA_WHATSAPP;
-  const whatsappDisplay = lang === "ru" ? "+7 999 000 4136" : "+971 58 533 8222";
+  const whatsappDisplay = "+7 999 000 4136";
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);

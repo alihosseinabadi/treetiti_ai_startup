@@ -10,6 +10,7 @@ self-hosted, free-models-only AI agency backend.
 | `treetiti/` | React 19 + Vite + Tailwind 4 marketing site (cinematic scenes, Supabase CRM admin, i18n: en/fa/ru/ar/tr) |
 | `treetiti-ai-os/` | The AI OS: FastAPI backend (agents, model router, pgvector memory, scheduler), React dashboard, n8n workflows, docker-compose |
 | `customer_treetiti/` | Customer Service Directory blueprint (spec document) |
+| `treetiti_partners/findii/` | FindII — AI real-estate lead agent (Avito + Telegram + OSM map-grounded scoring, web CRM) |
 
 ## Backend quickstart (`treetiti-ai-os/backend`)
 

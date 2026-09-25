@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { Highlight } from "../ui/Accent"
-import { Scene08Assistant } from "./Scene08Assistant"
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -33,16 +32,16 @@ export default function Scene08_Workflow() {
       ScrollTrigger.create({
         trigger: section,
         start: "top top",
-        end: "+=300%",
+        end: "+=160%",
         pin: pin,
         pinSpacing: true,
         scrub: 1.5,
       })
 
       gsap.fromTo(headingRef.current,
-        { opacity: 0, y: 30, filter: "blur(6px)" },
+        { opacity: 0, y: 30 },
         {
-          opacity: 1, y: 0, filter: "blur(0px)",
+          opacity: 1, y: 0,
           scrollTrigger: {
             trigger: section,
             start: "top 60%",
@@ -54,11 +53,10 @@ export default function Scene08_Workflow() {
 
       stepRefs.current.forEach((step, i) => {
         if (!step) return
-        const isEven = i % 2 === 0
         gsap.fromTo(step,
-          { opacity: 0, x: isEven ? -60 : 60, y: 20, filter: "blur(8px)", rotateY: isEven ? 8 : -8 },
+          { opacity: 0, y: 28 },
           {
-            opacity: 1, x: 0, y: 0, filter: "blur(0px)", rotateY: 0,
+            opacity: 1, y: 0,
             scrollTrigger: {
               trigger: section,
               start: `${i * 14}%`,
@@ -90,13 +88,12 @@ export default function Scene08_Workflow() {
     <section
       ref={sectionRef}
       className="relative w-full"
-      style={{ height: "400vh", background: "var(--bg)" }}
+      style={{ height: "180vh", background: "var(--bg)" }}
     >
 <div
             ref={pinRef}
             className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center px-6 md:px-12"
           >
-            <Scene08Assistant />
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <div
             className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full"

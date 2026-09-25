@@ -2,8 +2,14 @@ import { useEffect, useRef } from "react"
 
 export default function FilmGrain({ opacity = 0.015 }: { opacity?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const enabled =
+    typeof window !== "undefined" &&
+    window.innerWidth >= 768 &&
+    !window.matchMedia("(pointer: coarse)").matches &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
 
   useEffect(() => {
+    if (!enabled) return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
@@ -13,15 +19,15 @@ export default function FilmGrain({ opacity = 0.015 }: { opacity?: number }) {
     let raf: number
 
     const resize = () => {
-      canvas.width = window.innerWidth * 1.5
-      canvas.height = window.innerHeight * 1.5
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
     }
     resize()
     window.addEventListener("resize", resize)
 
     const draw = () => {
       frame++
-      if (frame % 2 === 0) {
+      if (frame % 3 === 0) {
         const w = canvas.width
         const h = canvas.height
         const imageData = ctx.createImageData(w, h)
@@ -43,7 +49,9 @@ export default function FilmGrain({ opacity = 0.015 }: { opacity?: number }) {
       cancelAnimationFrame(raf)
       window.removeEventListener("resize", resize)
     }
-  }, [])
+  }, [enabled])
+
+  if (!enabled) return null
 
   return (
     <canvas

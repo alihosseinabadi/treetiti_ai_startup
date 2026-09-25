@@ -72,9 +72,9 @@ export default function Scene03_AIWebsites() {
 
       steps.forEach((step, i) => {
         gsap.fromTo(step,
-          { opacity: 0, x: -20, filter: "blur(6px)" },
+          { opacity: 0, x: -20 },
           {
-            opacity: 1, x: 0, filter: "blur(0px)",
+            opacity: 1, x: 0,
             scrollTrigger: {
               trigger: section,
               start: `${i * 12}%`,

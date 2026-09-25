@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { AnimatePresence, motion } from "framer-motion"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
-import HeroChat from "../HeroChat"
+import BrandingPhone from "../BrandingPhone"
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -11,9 +12,21 @@ export default function Scene01_Arrival() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLParagraphElement>(null)
-  const chatRef = useRef<HTMLDivElement>(null)
   const indicatorRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
+  const [phoneOpen, setPhoneOpen] = useState(false)
+  const [striking, setStriking] = useState(false)
+
+  const openPhone = () => {
+    if (striking || phoneOpen) return
+    setStriking(true)
+    window.setTimeout(() => setPhoneOpen(true), 550)
+  }
+
+  const closePhone = () => {
+    setPhoneOpen(false)
+    setStriking(false)
+  }
 
   useEffect(() => {
     const section = sectionRef.current
@@ -37,7 +50,6 @@ export default function Scene01_Arrival() {
         ease: "power2.out",
       })
       tl.to(subtitleRef.current, { y: -80, opacity: 0, ease: "power2.out" }, 0)
-      tl.to(chatRef.current, { y: -100, opacity: 0, ease: "power2.out" }, 0)
       tl.to(indicatorRef.current, { opacity: 0, ease: "power2.out" }, 0)
       tl.to(glowRef.current, { scale: 2, opacity: 0, ease: "power1.in" }, 0)
     }, section)
@@ -66,16 +78,28 @@ export default function Scene01_Arrival() {
             ref={textRef}
             className="text-[clamp(2rem,7.5vw,5.5rem)] font-display font-bold leading-[1.05] tracking-[-0.02em] text-white text-balance"
           >
-            <span className="font-light text-white/95">your brand&nbsp;</span>
+            <button
+              type="button"
+              onClick={openPhone}
+              className="relative inline-block text-white cursor-pointer transition-all duration-300 hover:[text-shadow:0_0_36px_rgba(110,168,255,0.65)]"
+              style={{ fontFamily: "'Caveat', cursive", fontWeight: 600, fontSize: "1.12em", transform: "rotate(-1.5deg)" }}
+            >
+              branding&nbsp;
+              {striking && (
+                <motion.span
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute left-0 right-2 top-1/2 h-[4px] rounded-full origin-left"
+                  style={{ background: "var(--text-primary)", boxShadow: "0 0 18px rgba(110,168,255,0.5)" }}
+                />
+              )}
+            </button>
             <span className="mx-3 align-middle text-[0.6em] font-light text-white/60">×</span>
-            <span className="text-[#6EA8FF]">
+            <span className="text-[#6EA8FF] inline-block" style={{ fontFamily: "'Caveat', cursive", fontWeight: 700, fontSize: "1.18em", transform: "rotate(-2deg)" }}>
               Treetiti
             </span>
           </h1>
-        </div>
-
-        <div ref={chatRef} className="mt-8 md:mt-10 w-full">
-          <HeroChat />
         </div>
       </div>
 
@@ -83,6 +107,10 @@ export default function Scene01_Arrival() {
         <span className="text-[9px] tracking-[0.3em] text-white/15 uppercase">{t("cinematicHome.scrollToExplore")}</span>
         <div className="w-[1px] h-10 bg-gradient-to-b from-white/20 to-transparent" />
       </div>
+
+      <AnimatePresence>
+        {phoneOpen && <BrandingPhone onClose={closePhone} />}
+      </AnimatePresence>
     </section>
   )
 }

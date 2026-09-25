@@ -7,31 +7,6 @@ import AuthModal from "./AuthModal";
 import ThemeSwitch from "./ThemeSwitch";
 import { buttonTap, buttonHover, springBounce } from "../constants/animations";
 
-const BLUE = "#6EA8FF";
-
-function LogoMark() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle cx="14" cy="14" r="3.5" fill="white" />
-      <circle cx="5" cy="5" r="2" fill={BLUE} opacity="0.6" />
-      <circle cx="23" cy="5" r="2" fill={BLUE} opacity="0.6" />
-      <circle cx="5" cy="23" r="2" fill="white" opacity="0.3" />
-      <circle cx="23" cy="23" r="2" fill="white" opacity="0.3" />
-      <circle cx="14" cy="5" r="1.5" fill="white" opacity="0.25" />
-      <circle cx="14" cy="23" r="1.5" fill="white" opacity="0.25" />
-      <circle cx="14" cy="14" r="12" fill="none" stroke={BLUE} strokeWidth="0.5" opacity="0.2" />
-    </svg>
-  );
-}
-
 const LANG_OPTIONS = [
   { code: "en", label: "EN" },
   { code: "fa", label: "FA" },
@@ -167,7 +142,6 @@ export default function Navigation() {
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.3 }}
             >
-              <LogoMark />
               <span className="group-hover:text-white/80 transition-colors duration-300">Treetiti</span>
             </motion.span>
           </Link>
