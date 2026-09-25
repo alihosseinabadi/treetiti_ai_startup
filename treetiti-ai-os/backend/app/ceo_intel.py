@@ -440,6 +440,28 @@ def get_daily_digest(db, context: str) -> str:
     return "\n\n".join(f"{label}:\n{body}" for label, body in blocks if body)
 
 
+def get_provider_status(db, context: str) -> str:
+    """Every LLM provider + whether its key is configured (no secrets)."""
+    try:
+        from app.core.provider_capability import provider_list
+
+        rows = provider_list()
+        if not rows:
+            return "No LLM providers registered."
+        lines = []
+        for p in rows:
+            state = "KEY OK" if p.get("key_configured") else "no key"
+            lines.append(
+                f"- {p.get('name')} ({p.get('prefix')}, {p.get('cost_tier')}): {state}"
+            )
+        on = sum(1 for p in rows if p.get("key_configured"))
+        lines.append(f"Configured: {on}/{len(rows)} providers.")
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("get_provider_status failed: %s", exc)
+        return ""
+
+
 def _scoped(task, context: str) -> bool:
     return _task_scoped(task, context)
 

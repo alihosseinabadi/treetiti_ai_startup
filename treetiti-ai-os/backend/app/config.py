@@ -116,29 +116,33 @@ class Settings(BaseSettings):
 
     # Free-model chain (strongest -> weakest).
     #
-    # ORDER IS EVIDENCE-BASED - re-probed live 2026-09-15 from this machine:
-    #   router/auto/best-*   OK    ~7.7s  <- the only working path (1M ctx, tools)
-    #   groq/groq/compound   FAIL  403 Forbidden
-    #   agnes/agnes-2.5-pro  FAIL  403 out of quota (remaining $0.0007)
-    #   google/...           FAIL  400 User location is not supported
-    #   openrouter/...       FAIL  403 Access denied by security policy
-    #   deepinfra/...        FAIL  402 no balance
-    #   ollama               FAIL  connection refused (server not running)
-    #   opencode CLI         NOT INSTALLED on PATH
-    #
-    # The local 9Router gateway therefore leads the chain; the cloud providers
-    # that used to lead it now answer 403/402/400 and are kept only as late
-    # fallbacks for when keys/region/balance change.
-    # Re-probe anytime:  .venv/bin/python app/healthcheck_providers.py
+    # ORDER IS EVIDENCE-BASED - re-probed live 2026-09-25 from this machine:
+    #   google/gemini-3.6-flash        OK ~3.9s  <- smartest verified direct model
+    #   openrouter/deepseek-v4-flash   OK ~1.7s  <- smart + fast
+    #   groq/gpt-oss-20b               OK ~0.8s  <- fastest
+    #   pollinations/openai            OK ~3.2s  <- reliable free tier
+    #   mistral/mistral-small-latest   429 throttled (key valid, keep as fallback)
+    #   router/auto/best-*             gateway DOWN (connection refused)
+    #   groq/groq/compound             403 Forbidden
+    #   agnes/agnes-2.5-pro            403 out of quota
+    #   deepseek/sambanova             402 no balance
+    #   cerebras/cohere/requesty       403 keys dead
+    #   ollama                         connection refused (server not running)
+    #   opencode CLI                   NOT INSTALLED on PATH
+    # Re-probe anytime:  .venv-win/bin/python app/healthcheck_providers.py
     free_model_chain: list[str] = [
-        "router/auto/best-coding",     # gateway - VERIFIED LIVE 2026-09-15
-        "router/auto/best-free",       # gateway - VERIFIED LIVE 2026-09-15
-        "router/auto/best-reasoning",  # gateway - deep reasoning
-        "router/auto/best-fast",       # gateway - speed-optimised
-        "router/oc/mimo-v2.5-free",    # gateway - MiMo V2.5
-        "groq/groq/compound",          # 403 on 2026-09-15 - rotate key / check region
-        "agnes/agnes-2.5-pro",         # 403 out-of-quota on 2026-09-15 - top up or drop
-        "pollinations/openai",         # VERIFIED LIVE 2026-09-25 - free community tier
+        "google/gemini-3.6-flash",       # VERIFIED LIVE 2026-09-25 - smartest direct
+        "openrouter/deepseek/deepseek-v4-flash",  # VERIFIED LIVE 2026-09-25 - smart + fast
+        "groq/openai/gpt-oss-20b",       # VERIFIED LIVE 2026-09-25 - fastest
+        "pollinations/openai",           # VERIFIED LIVE 2026-09-25 - reliable free tier
+        "mistral/mistral-small-latest",  # key valid, throttled - fallback only
+        "router/auto/best-coding",       # gateway - down 2026-09-25, leads when up
+        "router/auto/best-free",         # gateway - down 2026-09-25
+        "router/auto/best-reasoning",    # gateway - deep reasoning when up
+        "router/auto/best-fast",         # gateway - speed-optimised when up
+        "router/oc/mimo-v2.5-free",      # gateway - MiMo V2.5 when up
+        "groq/groq/compound",            # 403 - rotate key / check region
+        "agnes/agnes-2.5-pro",           # 403 out-of-quota - top up or drop
         "opencode/deepseek-v4-flash-free",  # keyless last resort (CLI not installed)
     ]
 

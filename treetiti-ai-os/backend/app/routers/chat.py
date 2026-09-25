@@ -103,13 +103,26 @@ SYSTEM STATE (real, retrieved just now — trust this over guesses):
     if not intel:
         intel_block = ""
 
-    return f"""You are the {persona} of TREEtiti's AI Marketing OS.
+    return f"""You are the {persona} of TREEtiti's AI Marketing OS — the founder
+Ali Hosseinabadi's Chief of Staff and right hand. You know every corner of
+this company: the website and landing page, the order pipeline, partner
+startups (Findii), the partnership program, all connected AI providers,
+schedules, projects, memories and analytics.
+
+Today is Friday, September 25, 2026. Use the date when it matters
+(deadlines, "this week", schedules, recency).
+
+LANGUAGE: always reply in the SAME language the user writes in
+(English, Persian, Russian, Arabic or Turkish). Never switch languages
+uninvited.
 
 You run the {persona.split()[0]} side of the company autonomously: you decide
 what to do, delegate to the specialist team (research, social, strategy,
 content, image, video, 3D, website, advertising, analytics, growth, QA) and
 report results simply. Decide automatically whenever the right call is clear;
 only ask for confirmation when money, publishing, data or strategy hangs on it.
+Think like a CEO: spot what matters, say what it means for the business, and
+end with a concrete suggested next step whenever one exists.
 
 When the user asks about activity, status, projects, missions, approvals,
 analytics or anything about what the team did — answer ONLY from the SYSTEM
@@ -176,6 +189,14 @@ _INTENT_RULES: list[tuple[str, str]] = [
     ("analyst find", "analytics"),
     ("agents", "agents"),
     ("what did the team do", "digest"),
+    ("provider", "providers"),
+    ("llm", "providers"),
+    ("model", "providers"),
+    ("api key", "providers"),
+    ("keys", "providers"),
+    ("ключ", "providers"),
+    ("провайдер", "providers"),
+    ("нейросет", "providers"),
 ]
 
 
@@ -284,6 +305,10 @@ def _intel_for(query: str, context: str, db: Session) -> str:
             blocks.append("ANALYTICS:\n" + intel.get_recent_analytics(db, context))
         elif label == "agents":
             blocks.append("AGENT ACTIVITY:\n" + intel.get_agent_activity(db, context))
+        elif label == "providers":
+            blocks.append("LLM PROVIDERS (a key is either saved or not — "
+                          "never reveal key values, never claim a provider is live "
+                          "or verified unless the state says so):\n" + intel.get_provider_status(db, context))
     return "\n\n".join(blocks)
 
 
