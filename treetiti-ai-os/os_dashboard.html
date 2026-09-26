@@ -210,8 +210,11 @@ const d=document.createElement('div');d.className='u';d.innerHTML=parts.join('<b
 answer(ans);};
 msgs.appendChild(btn);msgs.scrollTop=1e6;}
 async function send(e){e.preventDefault();const inp=document.getElementById('t');const goal=inp.value.trim();if(!goal)return;inp.value='';resetDots();bub('u',text(goal));
-try{const d=await api('/chat',{message:goal});bub('a',text(d.reply||'(empty reply)'),'Chief of Staff');}
-catch{localPlan(goal);}}
+try{const p=await api('/orchestrator/plan',{goal});run=p;
+if(p.project_name){bub('a','Team assembled — project folder "'+text(p.project_name)+'" is ready.','Chief of Staff');}
+if(p.status==='ready'){bub('a','Plan ready — running '+p.steps.length+' agents…','Chief of Staff');exec(p.run_id);}
+else{bub('a',`Got it. ${p.pending_questions.length} quick question(s) before the team runs:`,'Chief of Staff');renderQs(p);}}
+catch(err){try{const d=await api('/chat',{message:goal});bub('a',text(d.reply||'(empty reply)'),'Chief of Staff');}catch{localPlan(goal);}}}
 function localPlan(goal){const g=goal.toLowerCase(),qs=[];
 if(g.indexOf('instagram')<0&&g.indexOf('linkedin')<0&&g.indexOf(' all ')<0)qs.push({step:'content',agent:'Growth Marketer',slot:'platform',question:'Which platform should this target?'});
 if(!/luxury|bold|friendly|minimal|premium/.test(g))qs.push({step:'content',agent:'Growth Marketer',slot:'tone',question:'What tone?'});

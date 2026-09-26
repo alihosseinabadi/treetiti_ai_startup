@@ -23,13 +23,26 @@ class Base(DeclarativeBase):
 
 def _make_engine():
     settings = get_settings()
-    return create_engine(
+    engine = create_engine(
         settings.database_url,
         connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
     )
+    if "sqlite" in settings.database_url:
+        # WAL mode + busy timeout: concurrent agent threads and dashboard
+        # polling otherwise hit "database is locked" on SQLite.
+        from sqlalchemy import event
+
+        @event.listens_for(engine, "connect")
+        def _sqlite_wal(dbapi_conn, _record):  # noqa: ANN202
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=15000")
+            cursor.close()
+
+    return engine
 
 
 engine = _make_engine()

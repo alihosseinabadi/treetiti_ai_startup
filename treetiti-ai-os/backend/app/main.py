@@ -17,7 +17,12 @@ from app.brain import seed_business_knowledge
 from app.config import get_settings
 from app.database import ensure_schema
 from app.logging_config import configure_logging
-from app.routers import agents, approvals, assets, auth, campaigns, chat, clients, connectors, content, directory, leads, mcp, memory, missions, projects, providers, research, routines, talk, tasks, templates, teammates, webhooks
+from app.routers import (
+    agents, approvals, assets, auth, campaigns, chat,
+    clients, connectors, content, directory, leads, mcp, memory, missions,
+    orchestrator, projects, providers, research, routines, talk,
+    tasks, templates, teammates, webhooks,
+)
 from app.routers.projects import seed_primary_project
 from app.scheduler import start_autopilot, stop_autopilot
 
@@ -89,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(campaigns.router, prefix=api_prefix)
     app.include_router(approvals.router, prefix=api_prefix)
     app.include_router(missions.router, prefix=api_prefix)
+    app.include_router(orchestrator.router, prefix=api_prefix)
     app.include_router(clients.router, prefix=api_prefix)
     app.include_router(templates.router, prefix=api_prefix)
     app.include_router(routines.router, prefix=api_prefix)
