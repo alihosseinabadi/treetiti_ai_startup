@@ -3,57 +3,57 @@
 <title>Treetiti OS — Chief of Staff</title>
 <style>
 *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
-body{margin:0;background:#fff;height:100vh;overflow:hidden}
+body{margin:0;background:#050505;height:100vh;overflow:hidden;color:#f2f2f2}
 .grid{display:grid;grid-template-columns:270px 1fr;gap:0;max-width:none;margin:0;height:100vh;align-items:stretch}
-.panel{background:#fff;border-radius:0;box-shadow:none;overflow:hidden}
-.panel:first-child{border-right:1px solid #e4e4e7}
-.search{margin:10px;background:#f1f3f6;border-radius:9px;padding:8px 10px;font-size:13px;color:#888;display:flex;gap:6px;align-items:center}
+.panel{background:#050505;border-radius:0;box-shadow:none;overflow:hidden}
+.panel:first-child{border-right:1px solid rgba(255,255,255,0.08)}
+.search{margin:10px;background:rgba(255,255,255,0.05);border-radius:9px;padding:8px 10px;font-size:13px;color:#9a9a9a;display:flex;gap:6px;align-items:center}
 .agent{display:flex;gap:10px;padding:8px 12px;align-items:center;cursor:pointer;border:none;background:none;width:100%;text-align:left}
-.agent.on{background:#edf0f4}
+.agent.on{background:rgba(110,168,255,0.12)}
 .av{width:32px;height:32px;border-radius:50%;color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:700;flex-shrink:0}
-.nm{font-size:12.5px;font-weight:700;color:#111}.sn{font-size:11px;color:#7a7a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:135px}.tm{font-size:10px;color:#9a9a9a;margin-left:auto;flex-shrink:0}
-.chat{display:flex;flex-direction:column;height:100vh;background:#fff}
+.nm{font-size:12.5px;font-weight:700;color:#fff}.sn{font-size:11px;color:#7a7a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:135px}.tm{font-size:10px;color:#9a9a9a;margin-left:auto;flex-shrink:0}
+.chat{display:flex;flex-direction:column;height:100vh;background:#050505}
 .chead{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 0}
-.chead .t{font-size:14px;font-weight:700}
+.chead .t{font-size:14px;font-weight:700;color:#fff}
 .ctime{text-align:center;font-size:10.5px;color:#999;margin:2px 0 6px}
 .msgs{flex:1;overflow-y:auto;padding:6px 16px;display:flex;flex-direction:column;gap:10px}
-.u{align-self:flex-end;background:#1c1c1e;color:#fff;border-radius:16px 16px 4px 16px;padding:9px 13px;font-size:13px;max-width:82%}
-.a{align-self:flex-start;background:#f0f1f4;border-radius:16px 16px 16px 4px;padding:9px 13px;font-size:13px;max-width:88%;color:#111}
+.u{align-self:flex-end;background:linear-gradient(180deg,#1a9bff,#0A84FF);color:#fff;box-shadow:0 4px 16px rgba(10,132,255,0.35);border-radius:16px 16px 4px 16px;padding:9px 13px;font-size:13px;max-width:82%}
+.a{align-self:flex-start;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.07);border-radius:16px 16px 16px 4px;padding:9px 13px;font-size:13px;max-width:88%;color:#f2f2f2}
 .a b.agent-tag{display:block;font-size:10.5px;color:#7c3aed;margin-bottom:3px}
 .file{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #e3e3e6;border-radius:10px;padding:8px;margin-top:8px}
-.qcard{align-self:flex-start;background:#fff7ed;border:1px solid #fdba74;border-radius:12px;padding:10px 12px;font-size:12px;max-width:88%;color:#111}
-.qcard input{width:100%;font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid #fed7aa;margin-top:6px}
-.qbtn{align-self:flex-start;background:#111;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer}
-.lnkrow{display:flex;gap:6px;margin-top:6px}.lnkrow input{flex:1;font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid #e5e7eb}
-.mini{font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;white-space:nowrap}
-.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.chip{font-size:11px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:3px 8px;display:flex;gap:5px;align-items:center}
+.qcard{align-self:flex-start;background:rgba(110,168,255,0.07);border:1px solid rgba(110,168,255,0.3);border-radius:12px;padding:10px 12px;font-size:12px;max-width:88%;color:#fff}
+.qcard input{width:100%;font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.14);margin-top:6px;background:rgba(255,255,255,0.05);color:#fff}
+.qbtn{align-self:flex-start;background:#6EA8FF;color:#07101f;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer}
+.lnkrow{display:flex;gap:6px;margin-top:6px}.lnkrow input{flex:1;font-size:12px;padding:6px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#fff}
+.mini{font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid rgba(10,132,255,0.55);background:transparent;color:#0A84FF;cursor:pointer;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.chip{font-size:11px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);color:#eee;border-radius:20px;padding:3px 8px;display:flex;gap:5px;align-items:center}
 .chip a{color:#7c3aed;text-decoration:none}.chip button{border:none;background:none;color:#999;cursor:pointer;font-size:11px}
 .thumb{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb}
-.proj{display:flex;gap:8px;align-items:center;width:100%;border:none;background:none;text-align:left;padding:7px 12px;font-size:12.5px;cursor:pointer;color:#111}
-.proj.on{background:#eef1f5;font-weight:700}
+.proj{display:flex;gap:8px;align-items:center;width:100%;border:none;background:none;text-align:left;padding:7px 12px;font-size:12.5px;cursor:pointer;color:#ddd}
+.proj.on{background:rgba(110,168,255,0.12);font-weight:700;color:#fff}
 .overlay{position:fixed;inset:0;background:rgba(15,20,35,.45);display:none;place-items:center;z-index:50}
-.sheet{background:#fff;border-radius:16px;width:min(680px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
+.sheet{background:#101014;border-radius:16px;border:1px solid rgba(255,255,255,0.1);width:min(680px,94vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden}
 .tabs{display:flex;gap:4px;padding:10px 12px 0;border-bottom:1px solid #eee}
-.tab{border:none;background:none;font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer;color:#777;border-bottom:2px solid transparent}
-.tab.on{color:#111;border-bottom-color:#7c3aed}
-.sbody{padding:12px 16px;overflow-y:auto;font-size:13px}
-.jrow{display:flex;gap:8px;align-items:center;border:1px solid #eee;border-radius:10px;padding:8px 10px;margin:6px 0}
+.tab{border:none;background:none;font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer;color:#888;border-bottom:2px solid transparent}
+.tab.on{color:#fff;border-bottom-color:#6EA8FF}
+.sbody{padding:12px 16px;overflow-y:auto;font-size:13px;color:#e8e8e8}.sbody b{color:#fff}.file{background:rgba(255,255,255,0.04)!important;border-color:rgba(255,255,255,0.1)!important}
+.jrow{display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);border-radius:10px;padding:8px 10px;margin:6px 0}
 .jrow small{color:#777}
-.tbtn{font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
-.tbtn.go{background:#111;color:#fff;border-color:#111}
-.tinp{font-size:12px;padding:7px 9px;border-radius:8px;border:1px solid #e5e7eb}
+.tbtn{font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#eee;cursor:pointer}
+.tbtn.go{background:#6EA8FF;color:#07101f;border-color:#6EA8FF;font-weight:700}
+.tinp{font-size:12px;padding:7px 9px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#fff;color-scheme:dark}
 select.tinp{background:#fff}
 .dot{width:8px;height:8px;border-radius:50%;background:#d4d4d8;flex-shrink:0}
 .dot.work{background:#22c55e;animation:pulse 1s infinite}
 .dot.done{background:#22c55e}
 @keyframes pulse{50%{opacity:.3}}
-.inp{display:flex;gap:8px;align-items:center;border-top:1px solid #eee;padding:10px}
-.inp input{flex:1;border:none;outline:none;font-size:13px}
+.inp{display:flex;gap:8px;align-items:center;border-top:1px solid rgba(255,255,255,0.08);padding:10px}
+.inp input{flex:1;border:none;outline:none;font-size:13px;background:transparent;color:#fff}
 @media(max-width:760px){.grid{grid-template-columns:1fr}.grid .panel:first-child{display:none}}
 </style></head><body>
 <div class="grid">
 <!-- 1. AGENTS -->
-<div class="panel" style="display:flex;flex-direction:column;height:100vh"><div style="padding:12px 12px 0;font-size:13px;font-weight:800;letter-spacing:.08em">TREETITI <span style="color:#7c3aed">OS</span></div><div class="search">⌕&nbsp;Search</div>
+<div class="panel" style="display:flex;flex-direction:column;height:100vh"><div style="padding:12px 12px 0;font-size:13px;font-weight:800;letter-spacing:.08em;color:#fff">TREETITI <span style="color:#7c3aed">OS</span></div><div class="search">⌕&nbsp;Search</div>
 <div style="padding:2px 0 6px;border-bottom:1px solid #eee"><div style="font-size:10.5px;color:#999;padding:2px 12px;letter-spacing:.06em">PROJECTS</div><div id="projects"></div>
 <button class="proj" onclick="newProject()" style="color:#7c3aed">＋ New project</button></div>
 <div id="agents" style="flex:1;overflow-y:auto"></div>
@@ -62,7 +62,7 @@ select.tinp{background:#fff}
 <button class="tbtn" onclick="openSheet('plug')">🔌 Plugins</button>
 <button class="tbtn" onclick="openSheet('keys')">🔑 Keys</button>
 </div>
-<div style="padding:0 12px 10px;font-size:12px;color:#555;display:flex;gap:8px;align-items:center"><span class="av" style="background:#333">AC</span><b style="color:#111">Alex Chen</b></div></div>
+<div style="padding:0 12px 10px;font-size:12px;color:#555;display:flex;gap:8px;align-items:center"><span class="av" style="background:#333">AC</span><b style="color:#fff">Alex Chen</b></div></div>
 <!-- 2. CHAT -->
 <div class="panel chat"><div class="chead"><span style="color:#999">‹&nbsp;&nbsp;›</span><span class="t" id="title">Chief of Staff</span><span style="color:#999">⧉&nbsp;☆&nbsp;⬆</span></div>
 <div class="ctime">9:41 AM</div><div class="msgs" id="msgs"></div>
@@ -164,11 +164,7 @@ const msgs=document.getElementById('msgs');
 function bub(who,html,tag){const d=document.createElement('div');d.className=who;
 d.innerHTML=(who==='a'&&tag?`<b class="agent-tag">${tag}</b>`:'')+html;msgs.appendChild(d);msgs.scrollTop=1e6;return d;}
 function text(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
-bub('u',"Hey, what's the latest update we have on Brightside Health?");
-bub('a',"From last meeting's call notes, they need to see support for Slack integration and SSO before they proceed with a pilot."+`<div class="file"><span style="background:#ef4444;color:#fff;border-radius:6px;font-size:10px;padding:4px 6px;font-weight:800">PDF</span><span><div style="font-size:12px;font-weight:700">Kickoff Agenda.pdf</div><div style="font-size:11px;color:#777">12 pages • 1.2 MB</div></span></div>`);
-bub('a',"PS: plan and Brightside Health's account notes in CRM are up to date with the latest.");
-bub('a',"Perfect, those shipped last week, post an update to let them know");
-bub('u',"Got it! Product updates shared and linked in #brightside-shared slack channel");
+bub('a',"Hey \u2014 I'm your Chief of Staff. Tell me what we're building, and I'll pull the team together.",'Chief of Staff');
 /* api() with auth is defined in the header script above */
 /* questions render INLINE in chat — each accepts text + links + pictures/files, mixed into the run */
 const attach={};
@@ -209,12 +205,21 @@ document.querySelectorAll('.qcard,.qbtn').forEach(e=>e.remove());
 const d=document.createElement('div');d.className='u';d.innerHTML=parts.join('<br>')||'Answered';msgs.appendChild(d);msgs.scrollTop=1e6;
 answer(ans);};
 msgs.appendChild(btn);msgs.scrollTop=1e6;}
-async function send(e){e.preventDefault();const inp=document.getElementById('t');const goal=inp.value.trim();if(!goal)return;inp.value='';resetDots();bub('u',text(goal));
-try{const p=await api('/orchestrator/plan',{goal});run=p;
-if(p.project_name){bub('a','Team assembled — project folder "'+text(p.project_name)+'" is ready.','Chief of Staff');}
-if(p.status==='ready'){bub('a','Plan ready — running '+p.steps.length+' agents…','Chief of Staff');exec(p.run_id);}
+async function send(e){e.preventDefault();const inp=document.getElementById('t');const goal=inp.value.trim();if(!goal)return;inp.value='';
+const cmd=goal.toLowerCase();
+if(/^(delete chat|clear chat|clear)$/.test(cmd)){document.getElementById('msgs').innerHTML='';run=null;resetDots();bub('a','Chat cleared \u2014 fresh canvas. What are we building?','Chief of Staff');return;}
+if(/^(new project|create project)$/.test(cmd)){newProject();return;}
+if(/^help$/.test(cmd)){bub('a','I can chat about anything. Under any reply tap <b>Assemble the team</b> and I\u2019ll build the plan, make the project folder and run it. Commands: <b>delete chat</b> \u2022 <b>new project</b>.','Chief of Staff');return;}
+resetDots();bub('u',text(goal));
+try{const d=await api('/chat',{message:goal});bub('a',text(d.reply||'(empty reply)')+'<div style="margin-top:8px"><button class="mini" onclick="assemble()">Assemble the team \u2192</button></div>','Chief of Staff');}
+catch{localPlan(goal);}}
+async function assemble(){const u=[...document.querySelectorAll('#msgs .u')].map(d=>d.innerText).join('\n').slice(-1500);
+if(!u.trim())return;resetDots();
+try{const p=await api('/orchestrator/plan',{goal:u});run=p;
+if(p.project_name){bub('a','Team assembled \u2014 project folder "'+text(p.project_name)+'" is ready.','Chief of Staff');}
+if(p.status==='ready'){bub('a','Plan ready \u2014 running '+p.steps.length+' agents\u2026','Chief of Staff');exec(p.run_id);}
 else{bub('a',`Got it. ${p.pending_questions.length} quick question(s) before the team runs:`,'Chief of Staff');renderQs(p);}}
-catch(err){try{const d=await api('/chat',{message:goal});bub('a',text(d.reply||'(empty reply)'),'Chief of Staff');}catch{localPlan(goal);}}}
+catch(err){bub('a','Could not assemble the team: '+text(err.message),'Chief of Staff');}}
 function localPlan(goal){const g=goal.toLowerCase(),qs=[];
 if(g.indexOf('instagram')<0&&g.indexOf('linkedin')<0&&g.indexOf(' all ')<0)qs.push({step:'content',agent:'Growth Marketer',slot:'platform',question:'Which platform should this target?'});
 if(!/luxury|bold|friendly|minimal|premium/.test(g))qs.push({step:'content',agent:'Growth Marketer',slot:'tone',question:'What tone?'});
