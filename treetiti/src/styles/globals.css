@@ -927,3 +927,12 @@ html[dir="rtl"] svg.rtl-flip-arrow {
   60% { box-shadow: 0 0 0 6px color-mix(in srgb, #34d399 0%, transparent); }
 }
 .hero-chat-dot { animation: heroChatPulse 2.2s ease-out infinite; }
+
+/* Brand wordmark: white artwork — keep it directly on dark UI,
+   put a dark chip behind it in light mode so it stays readable.
+   The chip matches the artwork edges so nothing looks cropped. */
+.brand-logo { border-radius: 6px; }
+[data-theme="light"] .brand-logo {
+  background: rgba(0, 0, 0, 0.92);
+  padding: 2px 8px;
+}

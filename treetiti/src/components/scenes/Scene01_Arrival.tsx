@@ -16,6 +16,8 @@ export default function Scene01_Arrival() {
   const glowRef = useRef<HTMLDivElement>(null)
   const [phoneOpen, setPhoneOpen] = useState(false)
   const [striking, setStriking] = useState(false)
+  const [glow, setGlow] = useState(0)
+  const brandingRef = useRef<HTMLButtonElement>(null)
 
   const openPhone = () => {
     if (striking || phoneOpen) return
@@ -26,6 +28,18 @@ export default function Scene01_Arrival() {
   const closePhone = () => {
     setPhoneOpen(false)
     setStriking(false)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const el = brandingRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy)
+    const radius = Math.max(r.width, r.height) * 1.6
+    const g = Math.max(0, 1 - dist / radius)
+    setGlow(g * g)
   }
 
   useEffect(() => {
@@ -62,6 +76,7 @@ export default function Scene01_Arrival() {
       ref={sectionRef}
       className="relative w-full h-screen flex items-center justify-center overflow-hidden"
       style={{ background: "var(--bg)" }}
+      onMouseMove={handleMouseMove}
     >
       <div
         ref={glowRef}
@@ -79,10 +94,17 @@ export default function Scene01_Arrival() {
             className="text-[clamp(2rem,7.5vw,5.5rem)] font-display font-bold leading-[1.05] tracking-[-0.02em] text-white text-balance"
           >
             <button
+              ref={brandingRef}
               type="button"
               onClick={openPhone}
-              className="relative inline-block text-white cursor-pointer transition-all duration-300 hover:[text-shadow:0_0_36px_rgba(110,168,255,0.65)]"
-              style={{ fontFamily: "'Caveat', cursive", fontWeight: 600, fontSize: "1.12em", transform: "rotate(-1.5deg)" }}
+              className="relative inline-block text-white cursor-pointer transition-[filter] duration-150"
+              style={{
+                fontFamily: "'Caveat', cursive",
+                fontWeight: 600,
+                fontSize: "1.12em",
+                transform: "rotate(-1.5deg)",
+                filter: `brightness(${1 + glow * 0.9}) drop-shadow(0 0 ${glow * 30}px rgba(110,168,255,${glow * 0.85}))`,
+              }}
             >
               branding&nbsp;
               {striking && (

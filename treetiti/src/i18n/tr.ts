@@ -192,7 +192,7 @@ const tr = {
   },
   cinematicHome: {
     badge: "Zekâ Yeniden Tanımlandı",
-    tagline: "Branding and Trending",
+    tagline: "Markalaşma ve Trend",
     theFuture: "Akıllı Sistem",
     heroSubtitle: "Hayal gücünün altyapıyla buluştuğu yer. Geleceği bugünden inşa edenler için YZ destekli iş sistemleri geliştiriyoruz.",
     startYourProject: "Projene Başla",
@@ -246,7 +246,7 @@ const tr = {
   scene03: {
     heading: "YZ Web Siteleri",
     steps: [
-      { title: "Tel Kafes", desc: "Mimari ve yapı" },
+      { title: "Wireframe", desc: "Mimari ve yapı" },
       { title: "Bileşenler", desc: "UI öğeleri ve etkileşimler" },
       { title: "İçerik", desc: "Metin, medya ve markalaşma" },
       { title: "Animasyon", desc: "Hareket ve geçişler" },
@@ -273,7 +273,7 @@ const tr = {
       { label: "Tipografi", desc: "Özel yazı tipi sistemi" },
       { label: "Palet", desc: "Renk mimarisi" },
       { label: "Hareket", desc: "Animasyon dili" },
-      { label: "Ses", desc: "Ton ve mesajlaşma" },
+      { label: "Ses", desc: "Ton ve mesaj dili" },
     ],
   },
 
@@ -292,6 +292,7 @@ const tr = {
     q3hint: "Moodboard, ekran görüntüsü, rakip siteler — her şey yardımcı olur. Tamamen opsiyonel.",
     q3add: "Görsel ekle",
     q4: "Ne zaman hazır olmalı?",
+    q5: "Ana hedefiniz nedir?",
     gLaunch: "Ürün lansmanı",
     gSales: "Satışları artırmak",
     gAwareness: "Marka bilinirliği",
@@ -471,6 +472,7 @@ const tr = {
     open: "Treet AI'ye sor",
     close: "Kapat",
     footerHint: "Ücretsiz yapay zeka danışmanı · canlı yanıtlar",
+    footer: "Ücretsiz yapay zeka danışmanı · canlı yanıtlar",
     error: "Şu anda bağlanamıyorum. Lütfen birazdan tekrar deneyin.",
     typePrompt: "canlı yanıtlar",
   },
@@ -679,8 +681,8 @@ const tr = {
   heroFlow: {
     pipHint: "Pip — beni sürükle ya da tıkla!",
     q1: "Merhaba! Ben Pip, Treetiti rehberin. Bugün ne sipariş etmek istersin?",
-    q1o1: "AI Web Sitesi",
-    q1o2: "AI Otomasyon",
+    q1o1: "YZ Web Sitesi",
+    q1o2: "YZ Otomasyon",
     q1o3: "Marka ve Kimlik",
     q1o4: "Başka bir şey",
     q2: "Harika! Hangi sektör için?",

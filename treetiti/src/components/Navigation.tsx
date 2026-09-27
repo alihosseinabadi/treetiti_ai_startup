@@ -4,6 +4,7 @@ import { motion, useSpring, useScroll, useTransform, AnimatePresence } from "fra
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../i18n/LanguageProvider";
 import AuthModal from "./AuthModal";
+import BrandLogo from "./BrandLogo";
 import ThemeSwitch from "./ThemeSwitch";
 import { buttonTap, buttonHover, springBounce } from "../constants/animations";
 
@@ -142,7 +143,8 @@ export default function Navigation() {
               whileHover={{ scale: 1.02 }}
               transition={{ duration: 0.3 }}
             >
-              <span className="group-hover:text-white/80 transition-colors duration-300">Treetiti</span>
+              <BrandLogo className="h-8 w-auto" />
+              <span className="sr-only">Treetiti</span>
             </motion.span>
           </Link>
 
@@ -157,37 +159,6 @@ export default function Navigation() {
             >
               {t("auth.signIn")}
             </motion.button>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={buttonTap}
-              className="inline-block"
-              style={{ perspective: "800px" }}
-            >
-              <Link
-                to="/start"
-                className="relative overflow-hidden group px-5 py-1.5 text-xs font-medium text-white rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6EA8FF]"
-                style={{
-                  background: "linear-gradient(135deg, rgba(110,168,255,0.25) 0%, rgba(110,168,255,0.08) 100%)",
-                  border: "1px solid rgba(110,168,255,0.3)",
-                  boxShadow: "0 0 30px rgba(110,168,255,0.06)",
-                }}
-              >
-                <span className="relative z-10">{t("auth.startProject")}</span>
-                <motion.div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: "linear-gradient(135deg, rgba(110,168,255,0.35) 0%, rgba(110,168,255,0.12) 100%)",
-                  }}
-                />
-                <div
-                  className="absolute -inset-full top-0 h-full w-1/2 skew-x-12 opacity-0 group-hover:opacity-40 transition-all duration-700"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
-                    animation: "lensFlare 3s ease-in-out infinite",
-                  }}
-                />
-              </Link>
-            </motion.div>
           </div>
         </nav>
       </motion.header>

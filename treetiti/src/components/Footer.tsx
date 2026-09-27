@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { buttonTap, springBounce } from "../constants/animations";
 import { Mail, MessageCircle } from "lucide-react";
+import BrandLogo from "./BrandLogo";
 
 const CONTACT_EMAIL = "brandingtreetiti@gmail.com";
 const UA_WHATSAPP = "79990004136";
@@ -81,8 +82,7 @@ export default function Footer() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 mb-16 md:mb-20">
             <div className="md:col-span-4">
               <Link to="/" className="inline-flex items-center gap-3 text-xl font-bold text-white mb-4 group">
-                <span className="w-2 h-2 rounded-full bg-[#6EA8FF]" />
-                <span className="text-[#6EA8FF]">Treetiti</span>
+                <BrandLogo className="h-8 w-auto" />
               </Link>
               <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
                 {t("footer.tagline")}
