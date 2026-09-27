@@ -244,7 +244,9 @@ def dispatch_os_command(
             return _reply("That conversation no longer exists.")
         sess.archived = True
         db.commit()
-        return _reply("Done. I deleted this conversation.")
+        out = _reply("Done. I deleted this conversation.")
+        out["chat_cleared"] = True
+        return out
 
     if action == "delete_all_sessions":
         if not confirm:
@@ -259,7 +261,9 @@ def dispatch_os_command(
             sess.archived = True
         db.commit()
         count = len(rows)
-        return _reply(f"Done. I deleted {count} conversation{'s' if count != 1 else ''}.")
+        out = _reply(f"Done. I deleted {count} conversation{'s' if count != 1 else ''}.")
+        out["chat_cleared"] = True
+        return out
 
     if action == "reset_session":
         # "reset / start fresh / start a new conversation": archive the current
@@ -268,9 +272,11 @@ def dispatch_os_command(
         if sess is not None:
             sess.archived = True
             db.commit()
-        return _reply(
+        out = _reply(
             "Done — I cleared this conversation. The next message starts a fresh chat."
         )
+        out["chat_cleared"] = True
+        return out
 
     if action == "rename_session":
         new_name = _extract_after(match)

@@ -228,7 +228,7 @@ def get_blocked_work(db, context: str) -> str:
 def get_project_status(db, context: str, name: str | None = None) -> str:
     """Real state of one project (or all) — campaigns, content, assets, tasks."""
     try:
-        from app.models import Campaign, ContentItem, MediaAsset, Project
+        from app.models import BrandContentCampaign, ContentItem, MediaAsset, Project
 
         q = db.query(Project)
         if _ctx_name(context):
@@ -241,7 +241,8 @@ def get_project_status(db, context: str, name: str | None = None) -> str:
 
         blocks: list[str] = []
         for p in projects:
-            campaigns = db.query(Campaign).filter(Campaign.title.ilike(f"%{p.name}%")).all() or []
+            campaigns = db.query(BrandContentCampaign).filter(
+                BrandContentCampaign.title.ilike(f"%{p.name}%")).all() or []
             content = (
                 db.query(ContentItem)
                 .order_by(ContentItem.created_at.desc())
@@ -273,7 +274,8 @@ def get_project_status(db, context: str, name: str | None = None) -> str:
                     for a in assets[:4]
                 ]
             blocks.append("\n".join(lines))
-        return "\n".join(blocks)
+        header = f"PROJECTS IN THE SYSTEM RIGHT NOW ({len(blocks)} total, factual):"
+        return header + "\n" + "\n".join(blocks)
     except Exception as exc:  # noqa: BLE001
         logger.warning("get_project_status failed: %s", exc)
         return ""

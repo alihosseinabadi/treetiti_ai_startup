@@ -54,6 +54,7 @@ class ChatResponse(BaseModel):
     project_id: str | None = None
     pending_decision: dict | None = None
     checkpoints: list = []
+    chat_cleared: bool = False  # client should wipe visible bubbles
 
 
 def _system_prompt(query: str = "", context: str = "", intel: str = "", session_id: str = "") -> str:
@@ -484,16 +485,17 @@ def chat(
             )
             session.messages = history
             db.commit()
-            return ChatResponse(
-                session_id=session.id,
-                reply=os_result["reply"],
-                context=payload.context,
-                task_id=os_result.get("task_id"),
-                confirmation_required=os_result.get("confirmation_required", False),
-                confirm_action=os_result.get("confirm_action", ""),
-                confirm_payload=os_result.get("confirm_payload", {}),
-                os_command=True,
-            )
+        return ChatResponse(
+            session_id=session.id,
+            reply=os_result["reply"],
+            context=payload.context,
+            task_id=os_result.get("task_id"),
+            confirmation_required=os_result.get("confirmation_required", False),
+            confirm_action=os_result.get("confirm_action", ""),
+            confirm_payload=os_result.get("confirm_payload", {}),
+            chat_cleared=os_result.get("chat_cleared", False),
+            os_command=True,
+        )
     except Exception as exc:  # noqa: BLE001 — OS commands must never break chat
         logger = __import__("logging").getLogger("treetiti.chat")
         logger.warning("OS command dispatch failed: %s", exc)
@@ -561,7 +563,25 @@ def chat(
                         f"This work is for client `{cname}`.\n{_customer_context_block(cname)}"
                     )
             agent_out = get_agent(_agent_key).run(**agent_payload)
-            reply = str(agent_out)[:4000]
+            if isinstance(agent_out, dict):
+                reply = (
+                    agent_out.get("summary")
+                    or agent_out.get("output")
+                    or agent_out.get("result")
+                    or agent_out.get("text")
+                    or agent_out.get("message")
+                    or ""
+                )
+                if not reply:
+                    # Human-readable fallback: flatten key findings, never raw-dump.
+                    bits = []
+                    for key in ("status", "count", "drafts", "published", "title", "name"):
+                        if agent_out.get(key) not in (None, "", [], {}):
+                            bits.append(f"{key}: {agent_out[key]}")
+                    reply = "; ".join(str(b) for b in bits[:6]) or "Done."
+                reply = str(reply)[:4000]
+            else:
+                reply = str(agent_out)[:4000]
             history.append(
                 {
                     "role": "assistant",

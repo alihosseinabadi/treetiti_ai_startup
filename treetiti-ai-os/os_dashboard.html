@@ -50,6 +50,22 @@ select.tinp{background:#fff}
 .inp{display:flex;gap:8px;align-items:center;border-top:1px solid rgba(255,255,255,0.08);padding:10px}
 .inp input{flex:1;border:none;outline:none;font-size:13px;background:transparent;color:#fff}
 @media(max-width:760px){.grid{grid-template-columns:1fr}.grid .panel:first-child{display:none}}
+.msgs>div{animation:msgin .3s ease both}
+@keyframes msgin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.agent{border-radius:10px;margin:1px 6px;width:calc(100% - 12px);transition:background .2s,transform .15s}
+.agent:hover{background:rgba(110,168,255,0.07)}
+.agent.on{box-shadow:inset 2px 0 0 #6EA8FF}
+.av{box-shadow:0 2px 10px rgba(0,0,0,0.45)}
+.mini:hover{border-color:#0A84FF!important;color:#0A84FF!important;transform:translateY(-1px)}
+.tbtn:hover{border-color:rgba(110,168,255,0.5)!important;color:#fff!important}
+.tbtn.go:hover{filter:brightness(1.1)}
+.qbtn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.chip a:hover{text-decoration:underline}
+.msgs::-webkit-scrollbar,#agents::-webkit-scrollbar,.sbody::-webkit-scrollbar{width:8px}
+.msgs::-webkit-scrollbar-thumb,#agents::-webkit-scrollbar-thumb,.sbody::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:8px}
+.inp input:focus{box-shadow:0 0 0 2px rgba(10,132,255,0.35);border-radius:12px}
+.chead{background:linear-gradient(180deg,rgba(110,168,255,0.06),transparent);border-radius:0 0 12px 12px}
+.proj:hover{background:rgba(110,168,255,0.06)}
 </style></head><body>
 <div class="grid">
 <!-- 1. AGENTS -->
@@ -205,14 +221,14 @@ document.querySelectorAll('.qcard,.qbtn').forEach(e=>e.remove());
 const d=document.createElement('div');d.className='u';d.innerHTML=parts.join('<br>')||'Answered';msgs.appendChild(d);msgs.scrollTop=1e6;
 answer(ans);};
 msgs.appendChild(btn);msgs.scrollTop=1e6;}
-async function send(e){e.preventDefault();const inp=document.getElementById('t');const goal=inp.value.trim();if(!goal)return;inp.value='';
-const cmd=goal.toLowerCase();
-if(/^(delete chat|clear chat|clear)$/.test(cmd)){document.getElementById('msgs').innerHTML='';run=null;resetDots();bub('a','Chat cleared \u2014 fresh canvas. What are we building?','Chief of Staff');return;}
-if(/^(new project|create project)$/.test(cmd)){newProject();return;}
-if(/^help$/.test(cmd)){bub('a','I can chat about anything. Under any reply tap <b>Assemble the team</b> and I\u2019ll build the plan, make the project folder and run it. Commands: <b>delete chat</b> \u2022 <b>new project</b>.','Chief of Staff');return;}
-resetDots();bub('u',text(goal));
-try{const d=await api('/chat',{message:goal});bub('a',text(d.reply||'(empty reply)')+'<div style="margin-top:8px"><button class="mini" onclick="assemble()">Assemble the team \u2192</button></div>','Chief of Staff');}
+async function send(e){e.preventDefault();const inp=document.getElementById('t');const goal=inp.value.trim();if(!goal)return;inp.value='';const cmd=goal.toLowerCase();if(/^clear$/.test(cmd)){document.getElementById('msgs').innerHTML='';run=null;resetDots();bub('a','Chat cleared \u2014 fresh canvas. What are we building?','Chief of Staff');return;}if(/^(new project|create project)$/.test(cmd)){newProject();return;}if(/^help$/.test(cmd)){bub('a','I can chat about anything. Under any reply tap <b>Assemble the team</b> and I\u2019ll build the plan, make the project folder and run it. Try: <b>delete this chat</b> \u2022 <b>remember that \u2026</b> \u2022 <b>create a project called \u2026</b> \u2022 <b>show projects</b>.','Chief of Staff');return;}doSend(goal,false);}
+let lastGoal='';
+async function doSend(goal,confirm){lastGoal=goal;resetDots();bub('u',text(goal));
+try{const d=await api('/chat',{message:goal,confirm:!!confirm});handleReply(d,goal);}
 catch{localPlan(goal);}}
+function handleReply(d,goal){if(d.chat_cleared){document.getElementById('msgs').innerHTML='';run=null;resetDots();bub('a',text(d.reply||'Done.'),'Chief of Staff');return;}if(d.confirmation_required){bub('a',text(d.reply||'Confirm?')+'<div style="margin-top:8px;display:flex;gap:8px"><button class="mini" onclick="confirmAction(true)">Confirm</button><button class="mini" onclick="confirmAction(false)">Cancel</button></div>','Chief of Staff');return;}bub('a',text(d.reply||'(empty reply)')+'<div style="margin-top:8px"><button class="mini" onclick="assemble()">Assemble the team \u2192</button></div>','Chief of Staff');}
+async function confirmAction(yes){const goal=lastGoal||'';if(!yes){bub('a','Cancelled \u2014 nothing changed.','Chief of Staff');return;}try{const d=await api('/chat',{message:goal,confirm:true});handleReply(d,goal);}
+catch(err){bub('a','Failed: '+text(err.message),'Chief of Staff');}}
 async function assemble(){const u=[...document.querySelectorAll('#msgs .u')].map(d=>d.innerText).join('\n').slice(-1500);
 if(!u.trim())return;resetDots();
 try{const p=await api('/orchestrator/plan',{goal:u});run=p;
