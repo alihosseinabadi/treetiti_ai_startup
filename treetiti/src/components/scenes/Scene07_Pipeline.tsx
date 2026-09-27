@@ -24,16 +24,6 @@ gsap.registerPlugin(ScrollTrigger)
 const MAX_PICS = 20
 const EMAIL_RE = /^\S+@\S+\.\S+$/
 
-const SERVICE_TABS: { id: string; label: string; icon: typeof Film; hint: string }[] = [
-  { id: "ugc", label: "UGC Influencer", icon: Sparkles, hint: "Authentic creator-led content for social and paid." },
-  { id: "branding", label: "Branding", icon: Megaphone, hint: "Brand films, visual identity, and campaign assets." },
-  { id: "cinematic", label: "Cinematic Video", icon: Film, hint: "Story-led cinematic videos with premium cinematography." },
-  { id: "architecture", label: "AI Architecture", icon: Cpu, hint: "Agent orchestration, model routing, and data layers." },
-  { id: "system", label: "System Design", icon: Workflow, hint: "Full-stack systems, portals, CRM, and automation." },
-]
-
-const TIMELINES = ["Within days", "1–2 weeks", "3–4 weeks", "1–2 months", "Flexible"]
-
 const TURNS = ["service", "idea", "email", "timeline", "goal", "extras", "name", "review"] as const
 type TurnId = (typeof TURNS)[number]
 const turnIndex = (t: TurnId) => TURNS.indexOf(t)
@@ -79,7 +69,23 @@ export default function Scene07_Pipeline() {
   const timers = useRef<number[]>([])
   const started = useRef(false)
 
-  const service = SERVICE_TABS.find((s) => s.id === serviceId)
+  const serviceTabs = [
+    { id: "ugc", label: t("scene07q.svcUgc"), icon: Sparkles, hint: t("scene07q.svcUgcHint") },
+    { id: "branding", label: t("scene07q.svcBranding"), icon: Megaphone, hint: t("scene07q.svcBrandingHint") },
+    { id: "cinematic", label: t("scene07q.svcCinematic"), icon: Film, hint: t("scene07q.svcCinematicHint") },
+    { id: "architecture", label: t("scene07q.svcArchitecture"), icon: Cpu, hint: t("scene07q.svcArchitectureHint") },
+    { id: "system", label: t("scene07q.svcSystem"), icon: Workflow, hint: t("scene07q.svcSystemHint") },
+  ]
+
+  const timelines = [
+    t("scene07q.tlDays"),
+    t("scene07q.tl12w"),
+    t("scene07q.tl34w"),
+    t("scene07q.tl12m"),
+    t("scene07q.tlFlex"),
+  ]
+
+  const service = serviceTabs.find((s) => s.id === serviceId)
   const serviceLabel = service?.label ?? customService
   const hasEmail = EMAIL_RE.test(email.trim())
   const skipLabel = t("scene07q.skip")
@@ -134,8 +140,8 @@ export default function Scene07_Pipeline() {
 
   const botChips = (id: TurnId): string[] | undefined => {
     switch (id) {
-      case "service": return SERVICE_TABS.map((s) => s.label)
-      case "timeline": return TIMELINES
+      case "service": return serviceTabs.map((s) => s.label)
+      case "timeline": return timelines
       case "goal": return [...goalOptions(), skipLabel]
       case "extras": return [skipLabel]
       default: return undefined
@@ -175,7 +181,7 @@ export default function Scene07_Pipeline() {
   const applyAnswer = (text: string) => {
     const value = text.trim()
     if (turn === "service") {
-      const hit = SERVICE_TABS.find((s) => s.label.toLowerCase() === value.toLowerCase())
+      const hit = serviceTabs.find((s) => s.label.toLowerCase() === value.toLowerCase())
       if (hit) { setServiceId(hit.id); setCustomService("") }
       else { setServiceId(""); setCustomService(value) }
     }
@@ -314,10 +320,10 @@ export default function Scene07_Pipeline() {
             <Highlight text={t("scene07.label")} />
           </span>
           <h2 className="text-[clamp(1.8rem,4vw,3.5rem)] font-display font-bold leading-[1.05] tracking-[-0.03em]" style={{ color: "var(--text-primary)" }}>
-            Tell us your idea. <span style={{ color: "#6EA8FF" }}>We build it.</span>
+            {t("scene07q.headingIdea")} <span style={{ color: "#6EA8FF" }}>{t("scene07q.headingIdeaAccent")}</span>
           </h2>
           <p className="text-sm md:text-base mt-4 leading-relaxed max-w-xl mx-auto" style={{ color: "var(--text-muted)" }}>
-            Just chat with our guide for a minute — our team takes your wish and does it for you.
+            {t("scene07q.headingSub")}
           </p>
         </div>
 

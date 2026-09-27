@@ -323,7 +323,7 @@ const ar = {
     svcUgc: "مؤثر UGC",
     svcUgcHint: "محتوى أصلي من صنّاع المحتوى لوسائل التواصل والإعلانات.",
     svcBranding: "العلامة التجارية",
-    svcBrandingHint: " films العلامة، الهوية البصرية وموارد الحملات.",
+    svcBrandingHint: "أفلام العلامة، الهوية البصرية وموارد الحملات.",
     svcCinematic: "فيديو سينمائي",
     svcCinematicHint: "فيديوهات سينمائية قصصية بتصوير سينمائي فاخر.",
     svcArchitecture: "معمارية الذكاء الاصطناعي",
