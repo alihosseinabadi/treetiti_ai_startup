@@ -13,6 +13,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import update
+
 from app.agents.base import BaseAgent
 from app.agents.brand import BrandIntelligenceAgent
 from app.database import SessionLocal
@@ -143,13 +145,10 @@ Respond ONLY with a JSON array of {count} such objects. No markdown fences.
 
         brand = BrandIntelligenceAgent()
         saved: list[dict[str, Any]] = []
+        pending_embeddings: list[tuple[str, str]] = []
         with SessionLocal() as db:
             for item in items:
                 body = str(item.get("body", ""))
-                if approve:
-                    verdict = brand.run(body, platform)
-                    if not verdict.get("approved") and verdict.get("fixed_content"):
-                        body = verdict["fixed_content"]
                 row = ContentItem(
                     platform=item.get("platform", platform),
                     content_type=item.get("content_type", "post"),
@@ -163,7 +162,7 @@ Respond ONLY with a JSON array of {count} such objects. No markdown fences.
                 )
                 db.add(row)
                 db.flush()
-                store_content_memory(row.id, f"{row.title} {row.body}")
+                pending_embeddings.append((row.id, f"{row.title} {row.body}"))
                 draft_path = _write_draft(item, body)
                 saved.append(
                     {
@@ -179,4 +178,26 @@ Respond ONLY with a JSON array of {count} such objects. No markdown fences.
                     }
                 )
             db.commit()
+        # Brand review (LLM) + embeddings AFTER the write txn closes, so no
+        # connection ever holds the SQLite write lock across network calls.
+        if approve:
+            for entry in saved:
+                try:
+                    verdict = brand.run(entry["body"], platform)
+                    if not verdict.get("approved") and verdict.get("fixed_content"):
+                        entry["body"] = verdict["fixed_content"]
+                        with SessionLocal() as fix_db:
+                            fix_db.execute(
+                                update(ContentItem)
+                                .where(ContentItem.id == entry["id"])
+                                .values(body=entry["body"])
+                            )
+                            fix_db.commit()
+                except Exception:  # noqa: BLE001
+                    pass
+        for row_id, text in pending_embeddings:
+            try:
+                store_content_memory(row_id, text)
+            except Exception:  # noqa: BLE001
+                pass
         return saved
