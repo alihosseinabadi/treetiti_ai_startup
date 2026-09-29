@@ -131,6 +131,7 @@ header{display:flex;align-items:center;gap:6px;padding:10px 14px}
     <div class="toolrow">
       <button class="tbtn" onclick="openSheet('sched')">Schedules</button>
       <button class="tbtn" onclick="openSheet('plug')">Plugins</button>
+      <button class="tbtn" onclick="openSheet('agents')">Agents</button>
       <button class="tbtn" onclick="openSheet('keys')">Keys</button>
     </div>
     <div class="userrow"><span class="avatar">AC</span><span>Alex Chen</span></div>
@@ -171,6 +172,7 @@ header{display:flex;align-items:center;gap:6px;padding:10px 14px}
 <div class="tabs"><button class="tab" id="tab-sched" onclick="showTab('sched')">Schedules</button>
 <button class="tab" id="tab-proj" onclick="showTab('proj')">Projects</button>
 <button class="tab" id="tab-plug" onclick="showTab('plug')">Plugins</button>
+<button class="tab" id="tab-agents" onclick="showTab('agents')">Agents</button>
 <button class="tab" id="tab-keys" onclick="showTab('keys')">Keys</button>
 <span style="flex:1"></span><button class="tbtn" onclick="closeSheet()">✕</button></div>
 <div class="sbody" id="sbody"></div></div></div>
@@ -362,9 +364,9 @@ async function newProject(){const n=prompt('Project name:');if(!n||!n.trim())ret
 async function delProj(id){if(!confirm('Delete project?'))return;await api('/projects/'+id,null,'DELETE');await loadProjects();showTab('proj');}
 function openSheet(tab){document.getElementById('sheet').style.display='grid';showTab(tab);}
 function closeSheet(){document.getElementById('sheet').style.display='none';}
-async function showTab(t){['sched','proj','plug','keys'].forEach(k=>document.getElementById('tab-'+k).classList.toggle('on',k===t));
+async function showTab(t){['sched','proj','plug','keys','agents'].forEach(k=>document.getElementById('tab-'+k).classList.toggle('on',k===t));
   const b=document.getElementById('sbody');b.innerHTML='Loading…';
-  try{if(t==='sched')await renderSched(b);else if(t==='proj')await renderProjTab(b);else if(t==='keys')await renderKeys(b);else await renderPlug(b);}catch(e){b.innerHTML='Failed: '+esc(e.message);}}
+  try{if(t==='sched')await renderSched(b);else if(t==='proj')await renderProjTab(b);else if(t==='keys')await renderKeys(b);else if(t==='agents')await renderAgents(b);else await renderPlug(b);}catch(e){b.innerHTML='Failed: '+esc(e.message);}}
 async function renderSched(b){const jobs=await api('/agents/schedule');
   let h='<div style="color:#8e8e8e;margin-bottom:6px">Agents run automatically on these schedules.</div>';
   jobs.forEach(j=>{h+='<div class="jrow"><span>'+(j.enabled?'🟢':'⚪')+'</span><span style="flex:1"><b>'+esc(j.agent)+'</b> <small>'+esc(j.job_type)+' '+(j.job_type==='daily'?'@ '+esc(j.schedule_time||''):'every '+j.interval_minutes+'m')+'</small><br><small>last: '+(j.last_run_at||'never')+'</small></span>'
@@ -392,6 +394,16 @@ async function renderPlug(b){const plugs=((await api('/connectors')).connectors|
   b.innerHTML=h;}
 async function testConn(id){try{const r=await api('/connectors/'+id+'/test',{});toast('OK: '+JSON.stringify(r.connector||r).slice(0,120));}
   catch(e){toast('Failed: '+e.message);}showTab('plug');}
+async function renderAgents(b){
+  let agents=[];try{agents=await api('/agents');}catch{agents=[];}
+  let h='<div style="color:#8e8e8e;margin-bottom:10px">'+agents.length+' specialists on the team. Click one to brief it.</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
+  agents.forEach(a=>{const init=(a.name||a.key||'?').trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    h+='<button onclick="briefAgent(\''+a.key+'\',\''+esc(a.name||a.key).replace(/'/g,'')+'\')" style="display:flex;gap:10px;align-items:center;background:rgba(255,255,255,0.03);border:1px solid #2f2f2f;border-radius:12px;padding:10px 12px;cursor:pointer;color:#ececec;text-align:left">'
+    +'<span style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6EA8FF,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">'+esc(init)+'</span>'
+    +'<span style="min-width:0"><span style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.name||a.key)+'</span>'
+    +'<span style="display:block;font-size:11px;color:#8e8e8e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.department||a.status||'')+'</span></span></button>';});
+  h+='</div>';b.innerHTML=h;}
+function briefAgent(key,name){closeSheet();composerT.value='Brief the '+name+' ('+key+') agent: ';autoresize();composerT.focus();}
 async function renderKeys(b){
   let provs=[];try{provs=(await api('/providers')).providers||[];}catch{provs=[];}
   let usage=[];try{usage=(await api('/providers/usage')).usage||[];}catch{usage=[];}
