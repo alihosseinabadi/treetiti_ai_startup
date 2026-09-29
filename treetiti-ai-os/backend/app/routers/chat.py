@@ -677,6 +677,154 @@ def chat(
     return ChatResponse(session_id=session.id, reply=reply, context=payload.context)
 
 
+class ChatStreamRequest(BaseModel):
+    message: str
+    session_id: str | None = None
+    context: str = ""
+    confirm: bool = False
+
+
+@router.post("/stream")
+def chat_stream(
+    payload: ChatStreamRequest,
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """ChatGPT-style streaming chat over SSE.
+
+    Events: ``session`` {session_id} → zero or more ``token`` {text} →
+    optional ``message`` {full reply payload} → ``done`` {session_id}.
+    Single-pass brain (no refine) so first tokens arrive in seconds.
+    """
+    import json as _json
+
+    from fastapi.responses import StreamingResponse
+
+    from app.llm import llm_stream
+
+    _log = __import__("logging").getLogger("treetiti.chat")
+
+    def sse(event: str, data: dict) -> str:
+        return f"event: {event}\ndata: {_json.dumps(data, ensure_ascii=False)}\n\n"
+
+    def gen():
+        message = (payload.message or "").strip()
+        if not message:
+            yield sse("error", {"error": "Message is empty"})
+            return
+        if payload.session_id:
+            session = db.query(ChatSession).filter(ChatSession.id == payload.session_id).first()
+            if session is None:
+                yield sse("error", {"error": "Session not found"})
+                return
+        else:
+            session = ChatSession(title=message[:80], messages=[], context=payload.context)
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+        yield sse("session", {"session_id": session.id})
+
+        history = list(session.messages or [])
+        history.append({"role": "user", "content": message})
+        context = "\n".join(f"{m['role']}: {m['content']}" for m in history[-8:])
+        prompt = f"Conversation so far:\n{context}\n\nReply to the latest message."
+
+        try:
+            remember_conversation("user", message, source="chat")
+        except Exception:  # noqa: BLE001
+            pass
+
+        # Agentic controller + OS commands + routed agents answer at once.
+        try:
+            from app.agentic import run_agentic
+
+            agentic_result = run_agentic(message, session, db, confirm=payload.confirm)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("stream agentic failed: %s", exc)
+            agentic_result = None
+        if agentic_result:
+            reply = agentic_result["reply"]
+            history.append({"role": "assistant", "content": reply, "agentic": True})
+            session.messages = history
+            db.commit()
+            yield sse("message", {"reply": reply, "session_id": session.id,
+                                  "task_id": agentic_result.get("task_id"),
+                                  "mission_id": agentic_result.get("mission_id"),
+                                  "pending_decision": agentic_result.get("pending_decision")})
+            yield sse("done", {"session_id": session.id})
+            return
+
+        try:
+            from app.os_commands import dispatch_os_command
+
+            os_result = dispatch_os_command(message, payload.context, session.id, db,
+                                            confirm=payload.confirm)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("stream OS dispatch failed: %s", exc)
+            os_result = None
+        if os_result:
+            history.append({"role": "assistant", "content": os_result["reply"], "os_command": True})
+            session.messages = history
+            db.commit()
+            yield sse("message", {"reply": os_result["reply"], "session_id": session.id,
+                                  "os_command": True,
+                                  "confirmation_required": os_result.get("confirmation_required", False),
+                                  "confirm_action": os_result.get("confirm_action", ""),
+                                  "chat_cleared": os_result.get("chat_cleared", False)})
+            yield sse("done", {"session_id": session.id})
+            return
+
+        # Brain: stream tokens as they arrive.
+        try:
+            system = _system_prompt(message, payload.context,
+                                    _intel_for(message, payload.context, db), session.id)
+            full: list[str] = []
+            for piece in llm_stream(system, prompt, model=_chat_model(), temperature=0.7):
+                if piece:
+                    full.append(piece)
+                    yield sse("token", {"text": piece})
+            reply = "".join(full).strip()
+            if not reply:
+                raise RuntimeError("empty stream")
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("stream brain failed (%s) — grounded fallback", str(exc)[:120])
+            try:
+                intel = _intel_for(message, payload.context, db)
+                memory = search_memory(message, limit=3)
+            except Exception:  # noqa: BLE001
+                intel, memory = "", []
+            if memory:
+                learned = "\n".join(f"- {m['title']}: {m['content'][:200]}" for m in memory)
+                reply = ("I can't reach a language model right now, so I'll answer "
+                         f"from what I already know.\n\nWhat the team remembered:\n{learned}")
+            else:
+                reply = ("I can't reach a language model right now — ask me again "
+                         "in a moment and I'll handle it properly.")
+            if "SYSTEM STATE" in intel:
+                reply += f"\n\nCurrent system state:\n{intel[:800]}"
+            yield sse("message", {"reply": reply, "session_id": session.id})
+            history.append({"role": "assistant", "content": reply})
+            session.messages = history
+            db.commit()
+            yield sse("done", {"session_id": session.id})
+            return
+
+        history.append({"role": "assistant", "content": reply})
+        session.messages = history
+        db.commit()
+        try:
+            from app.memory.store import store_memory
+
+            if len(reply) >= 60:
+                store_memory(reply, kind="lesson", title=f"Assistant: {reply[:80]}",
+                             source="chat", tag="assistant")
+        except Exception:  # noqa: BLE001
+            pass
+        yield sse("done", {"session_id": session.id})
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
 @router.get("/history/search")
 def search_all_chat_history(
     user: Annotated[User, Depends(get_current_user)],
