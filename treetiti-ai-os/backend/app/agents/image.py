@@ -24,7 +24,7 @@ MEDIA_DIR = Path(__file__).resolve().parents[2] / "media"
 
 
 class ImageGenerationAgent(BaseAgent):
-    model = "zai/glm-4.5-flash"  # verified free, fast creative prompting
+    model = "google/gemini-3.6-flash"  # verified live, fast creative prompting
     name = "Image Generation Agent"
     role = "visual art director"
     system_prompt = SYSTEM_PROMPT

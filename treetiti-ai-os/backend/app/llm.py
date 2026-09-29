@@ -770,6 +770,12 @@ def llm_complete(
 
     if provider == "opencode":
         if not _opencode_available():
+            # No CLI: don't die here — walk the free-model chain instead so
+            # registry picks (auto/..., router/...) still resolve to a live
+            # provider instead of raising "opencode CLI not found".
+            chained = _dispatch_chain(system, prompt, temperature, timeout)
+            if chained is not None:
+                return chained
             raise RuntimeError(
                 "opencode CLI not found on PATH. Set LLM_PROVIDER=ollama to "
                 "use the free local fallback."
