@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.agents import AGENTS, get_agent
-from app.auth import get_current_user, require_role
+from app.auth import require_role
 from app.database import SessionLocal, get_db
 from app.models import AgentRun, ScheduledJob, User
 from app.scheduler import run_agent
@@ -100,14 +100,14 @@ def run_agent_endpoint(
 
 
 @router.get("")
-def list_agents(user: Annotated[User, Depends(get_current_user)]) -> list[dict]:
+def list_agents(user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> list[dict]:
     from app.core.agent_registry import get_registry
 
     return get_registry().to_dicts()
 
 
 @router.get("/active")
-def list_active_agents(user: Annotated[User, Depends(get_current_user)]) -> list[dict]:
+def list_active_agents(user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> list[dict]:
     from app.core.agent_registry import get_registry
 
     return [a.to_dict() for a in get_registry().active()]
@@ -115,7 +115,7 @@ def list_active_agents(user: Annotated[User, Depends(get_current_user)]) -> list
 
 @router.get("/runs")
 def list_runs(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     limit: int = 50,
 ) -> list[dict]:
@@ -130,7 +130,7 @@ def list_runs(
 
 @router.get("/schedule")
 def get_schedule(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     context: str = "",
 ) -> list[dict]:
@@ -271,7 +271,7 @@ class AgentInstructionRequest(BaseModel):
 
 @router.get("/instructions")
 def list_agent_instructions(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[dict]:
     """Every custom instruction the owner gave an agent (Phase 6)."""

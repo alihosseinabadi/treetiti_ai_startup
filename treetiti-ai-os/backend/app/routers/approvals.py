@@ -14,7 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import SessionLocal
 from app.models import Approval, User
 
@@ -38,7 +38,7 @@ class ApprovalDecide(BaseModel):
 
 @router.get("")
 def list_approvals(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     status: str = "",
 ) -> list[dict]:
     with SessionLocal() as db:
@@ -52,7 +52,7 @@ def list_approvals(
 @router.post("")
 def request_approval(
     payload: ApprovalCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     if payload.kind not in KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {sorted(KINDS)}")
@@ -73,7 +73,7 @@ def request_approval(
 @router.get("/{approval_id}")
 def get_approval(
     approval_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     with SessionLocal() as db:
         a = db.get(Approval, approval_id)
@@ -86,7 +86,7 @@ def get_approval(
 def decide_approval(
     approval_id: str,
     payload: ApprovalDecide,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     if payload.decision not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="decision must be 'approve' or 'reject'")

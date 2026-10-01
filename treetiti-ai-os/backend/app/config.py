@@ -11,9 +11,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # --- App ---
-    app_name: str = "TREEtiti AI Marketing OS"
+    # Fail closed: unset APP_ENV means production (amendment 3).
+    app_env: str = "production"
+    app_name: str = "TREEtiti AI Agency OS"
     api_prefix: str = "/api/v1"
-    environment: str = "development"
+    environment: str = "development"  # legacy informational flag (see brain.py)
 
     # --- Logging ---
     log_level: str = "INFO"
@@ -267,10 +269,14 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://treetiti:treetiti@localhost:5432/treetiti_ai_os"
 
     # --- Auth ---
-    auth_passwordless: bool = False  # skip password check (dev/demo mode)
-    auth_passwordless_login: str = "aalleeiiii"  # identifier accepted when passwordless
+    # Passwordless mode was removed (Phase 0.3): every login requires a
+    # real password verified against the users table.
     admin_email: str = "admin@treetiti.com"
     admin_password: str = "change-me-in-prod"
+    # Single-use first-run setup token. Generate with:
+    #   python -c "import secrets; print(secrets.token_urlsafe(48))"
+    # Required to call POST /auth/setup. Never commit it.
+    admin_setup_token: str = ""
     jwt_secret: str = "change-me-in-prod"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
@@ -280,6 +286,10 @@ class Settings(BaseSettings):
     # /webhooks/publish, /webhooks/notify) require the X-Webhook-Secret
     # header to match. Leave empty ONLY for local development.
     webhook_shared_secret: str = ""
+    # Comma-separated IPs/CIDRs of reverse proxies whose X-Forwarded-For
+    # header may be trusted for rate limiting. Empty = trust nothing,
+    # always use the direct peer address.
+    trusted_proxies: str = ""
 
     # --- n8n ---
     n8n_url: str = "http://localhost:5678"
@@ -332,6 +342,54 @@ class Settings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
     )
+
+    # --- Phase 0.3: production guards (fail closed) ---
+    @property
+    def is_prod(self) -> bool:
+        return self.app_env.strip().lower() == "production"
+
+    def validate_prod(self) -> None:
+        """Raise RuntimeError if the process may not start as production.
+
+        Fail-closed rules (amendment 3):
+        - unset APP_ENV already means production (field default);
+        - JWT secret must be >= 32 bytes and not a placeholder;
+        - admin password must not be a placeholder (first-run setup flow
+          owns admin creation);
+        - webhook shared secret must be set (public webhooks fail closed);
+        - passwordless login no longer exists, nothing to check.
+        """
+        if not self.is_prod:
+            return
+        problems: list[str] = []
+        secret = self.jwt_secret or ""
+        if len(secret.encode("utf-8")) < 32 or secret in {
+            "change-me-in-prod",
+            "change-me",
+            "secret",
+            "test",
+        }:
+            problems.append("JWT secret must be >= 32 bytes and not a placeholder (JWT_SECRET)")
+        if (self.admin_password or "") in {"change-me-in-prod", "change-me", ""}:
+            problems.append(
+                "admin password must be set to a real value (ADMIN_PASSWORD); "
+                "admins are created via POST /auth/setup"
+            )
+        if not (self.webhook_shared_secret or ""):
+            problems.append(
+                "WEBHOOK_SHARED_SECRET must be set in production "
+                "(public webhooks fail closed without it)"
+            )
+        if problems:
+            raise RuntimeError(
+                "Refusing to start in production:\n- " + "\n- ".join(problems)
+            )
+
+
+#: Single-tenant org id carried in JWT claims until Phase 1 introduces
+#: real organizations. require_role() is already org-aware (amendment 1)
+#: so Phase 1 only adds the data layer, not an auth rework.
+DEFAULT_ORG_ID = "org_default"
 
 
 @lru_cache

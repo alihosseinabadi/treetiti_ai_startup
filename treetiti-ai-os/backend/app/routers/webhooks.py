@@ -9,37 +9,38 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from typing import Annotated
 
 from app.config import get_settings
 from app.database import get_db
 from app.models import ContentItem, User
 from app.services.email import email_html, send_email
 from app.services.social import _telegram_api, handle_telegram_update
-from app.webhook_security import require_webhook_secret
+from app.webhook_security import (
+    verify_telegram_request,
+    verify_webhook_request,
+    webhook_rate_limit,
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
-
-
-def _verify_telegram_secret(secret_header: str | None) -> None:
-    settings = get_settings()
-    if settings.telegram_webhook_secret and secret_header != settings.telegram_webhook_secret:
-        raise HTTPException(status_code=403, detail="Invalid secret token")
 
 
 @router.post("/telegram")
 def telegram_webhook(
     update: dict,
+    request: Request,
     x_telegram_bot_api_secret_token: Annotated[str | None, Header()] = None,
 ) -> dict:
     """Entry point configured via Telegram's setWebhook.
 
     Public by design (Telegram calls it). Answers text messages with the brain
-    and stores the conversation for the Sales Agent.
+    and stores the conversation for the Sales Agent. Verified via the
+    X-Telegram-Bot-Api-Secret-Token header (see webhook_security).
     """
-    _verify_telegram_secret(x_telegram_bot_api_secret_token)
+    verify_telegram_request(request)
     result = handle_telegram_update(update)
     # Telegram expects a fast 200; long agent calls run synchronously here.
     return result
@@ -50,18 +51,19 @@ class PublishRequest(BaseModel):
 
 
 @router.post("/publish/{content_id}")
-def publish_content(
+async def publish_content(
     content_id: str,
     payload: PublishRequest,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
-    x_webhook_secret: Annotated[str | None, Header()] = None,
+    _rl: Annotated[str, Depends(webhook_rate_limit("webhooks-publish", 60))],
 ) -> dict:
     """Publish an approved content item to a channel (free channels only).
 
     telegram: posts to the configured chat. Other channels are stubbed for n8n
-    (LinkedIn/Instagram require OAuth).
+    (LinkedIn/Instagram require OAuth). HMAC-signed (amendment 4).
     """
-    require_webhook_secret(x_webhook_secret)
+    await verify_webhook_request(request)
     item = db.get(ContentItem, content_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Content not found")
@@ -120,13 +122,15 @@ class NotifyRequest(BaseModel):
 
 
 @router.post("/notify")
-def notify_email(
+async def notify_email(
     payload: NotifyRequest,
-    x_webhook_secret: Annotated[str | None, Header()] = None,
+    request: Request,
+    _rl: Annotated[str, Depends(webhook_rate_limit("webhooks-notify", 60))],
 ) -> dict:
     """Send a brand-style email notification. Called by n8n workflows so they
-    can notify you without Telegram (leads, daily report, content ready, …)."""
-    require_webhook_secret(x_webhook_secret)
+    can notify you without Telegram (leads, daily report, content ready, …).
+    HMAC-signed (amendment 4)."""
+    await verify_webhook_request(request)
     html = email_html(payload.title or payload.subject, payload.rows)
     ok = send_email(payload.subject, html, body_text=payload.text)
     if not ok:

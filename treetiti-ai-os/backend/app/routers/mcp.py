@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.models import McpServer, User
 
@@ -57,7 +57,7 @@ class McpToolCall(BaseModel):
 
 @router.get("", response_model=list[McpServerResponse])
 def list_mcp_servers(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[McpServerResponse]:
     servers = db.query(McpServer).order_by(McpServer.created_at.desc()).all()
@@ -82,7 +82,7 @@ def list_mcp_servers(
 @router.post("", response_model=McpServerResponse, status_code=201)
 def register_mcp_server(
     payload: McpServerCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> McpServerResponse:
     server = McpServer(
@@ -115,7 +115,7 @@ def register_mcp_server(
 @router.get("/{server_id}", response_model=McpServerResponse)
 def get_mcp_server(
     server_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> McpServerResponse:
     server = db.query(McpServer).filter(McpServer.id == server_id).first()
@@ -140,7 +140,7 @@ def get_mcp_server(
 def update_mcp_server(
     server_id: str,
     payload: McpServerUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> McpServerResponse:
     server = db.query(McpServer).filter(McpServer.id == server_id).first()
@@ -171,7 +171,7 @@ def update_mcp_server(
 @router.post("/{server_id}/probe", response_model=McpServerResponse)
 async def probe_mcp_server(
     server_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> McpServerResponse:
     server = db.query(McpServer).filter(McpServer.id == server_id).first()
@@ -223,7 +223,7 @@ async def probe_mcp_server(
 async def call_mcp_tool(
     server_id: str,
     payload: McpToolCall,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     server = db.query(McpServer).filter(McpServer.id == server_id).first()
@@ -259,7 +259,7 @@ async def call_mcp_tool(
 @router.delete("/{server_id}")
 def delete_mcp_server(
     server_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     server = db.query(McpServer).filter(McpServer.id == server_id).first()

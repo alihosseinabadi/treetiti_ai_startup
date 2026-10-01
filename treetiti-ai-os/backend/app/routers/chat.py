@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.config import get_settings
 from app.database import get_db
 from app.dispatcher import dispatch, is_company_task, route_prompt
@@ -382,7 +382,7 @@ def _customer_context_block(name: str) -> str:
 @router.post("", response_model=ChatResponse)
 def chat(
     payload: ChatRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> ChatResponse:
     if not payload.message.strip():
@@ -687,7 +687,7 @@ class ChatStreamRequest(BaseModel):
 @router.post("/stream")
 def chat_stream(
     payload: ChatStreamRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ):
     """ChatGPT-style streaming chat over SSE.
@@ -827,7 +827,7 @@ def chat_stream(
 
 @router.get("/history/search")
 def search_all_chat_history(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     q: str = "",
     limit: int = 5,
 ) -> list[dict]:
@@ -839,7 +839,7 @@ def search_all_chat_history(
 
 @router.get("/pending")
 def list_pending_decisions(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[dict]:
     """Open agentic ask-back questions (survive browser closes)."""
@@ -865,7 +865,7 @@ def list_pending_decisions(
 
 @router.get("/sessions")
 def list_sessions(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     context: str = "",
 ) -> list[dict]:
@@ -890,7 +890,7 @@ class SessionMove(BaseModel):
 def rename_session(
     session_id: str,
     payload: SessionRename,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
@@ -907,7 +907,7 @@ def rename_session(
 def move_session(
     session_id: str,
     payload: SessionMove,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
@@ -927,7 +927,7 @@ def move_session(
 @router.delete("/sessions/{session_id}")
 def delete_session(
     session_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
@@ -941,7 +941,7 @@ def delete_session(
 @router.get("/sessions/{session_id}")
 def session_detail(
     session_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
@@ -976,7 +976,7 @@ def _with_media(msg: dict) -> dict:
 
 @router.get("/health")
 def chat_health(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     """Model health: consecutive failures per model (for the dashboard)."""
     return {"models": model_health()}
@@ -986,7 +986,7 @@ def chat_health(
 @router.post("/stream")
 def chat_stream(
     payload: ChatRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ):
     """Stream chat response token by token via Server-Sent Events."""

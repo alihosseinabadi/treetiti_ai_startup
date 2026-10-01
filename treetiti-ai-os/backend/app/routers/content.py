@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.models import ContentItem, User
 
@@ -40,7 +40,7 @@ def _serialize(item: ContentItem) -> dict:
 
 @router.get("")
 def list_content(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     status: str | None = None,
     platform: str | None = None,
@@ -58,7 +58,7 @@ def list_content(
 @router.get("/{item_id}")
 def get_content(
     item_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     item = db.get(ContentItem, item_id)
@@ -71,7 +71,7 @@ def get_content(
 def update_status(
     item_id: str,
     payload: StatusUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     if payload.status not in ALLOWED_STATUSES:

@@ -14,7 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import SessionLocal
 from app.models import Project, User
 import logging
@@ -41,7 +41,7 @@ class ProjectUpdate(BaseModel):
 
 @router.get("")
 def list_projects(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     status: str = "",
 ) -> list[dict]:
     with SessionLocal() as db:
@@ -56,7 +56,7 @@ def list_projects(
 @router.post("")
 def create_project(
     payload: ProjectCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         p = Project(
@@ -74,7 +74,7 @@ def create_project(
 @router.get("/{project_id}")
 def get_project(
     project_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     with SessionLocal() as db:
         p = db.get(Project, project_id)
@@ -87,7 +87,7 @@ def get_project(
 def update_project(
     project_id: str,
     payload: ProjectUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         p = db.get(Project, project_id)
@@ -103,7 +103,7 @@ def update_project(
 @router.post("/{project_id}/pin")
 def pin_project(
     project_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     pinned: bool = True,
 ) -> dict:
     with SessionLocal() as db:
@@ -119,7 +119,7 @@ def pin_project(
 @router.delete("/{project_id}")
 def archive_project(
     project_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         p = db.get(Project, project_id)

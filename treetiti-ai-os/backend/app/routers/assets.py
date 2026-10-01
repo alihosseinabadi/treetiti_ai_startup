@@ -14,7 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import SessionLocal
 from app.models import MediaAsset, User
 from app.services.media import produce_image, produce_video
@@ -47,7 +47,7 @@ class AssetGenerate(BaseModel):
 
 @router.get("")
 def list_assets(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     kind: str = "",
     creator_agent: str = "",
     session_id: str = "",
@@ -67,7 +67,7 @@ def list_assets(
 @router.post("")
 def create_asset(
     payload: AssetCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     if payload.kind not in KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {sorted(KINDS)}")
@@ -91,7 +91,7 @@ def create_asset(
 @router.post("/generate")
 def generate_asset(
     payload: AssetGenerate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     if payload.kind not in KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {sorted(KINDS)}")
@@ -129,7 +129,7 @@ def generate_asset(
 @router.get("/{asset_id}")
 def get_asset(
     asset_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     with SessionLocal() as db:
         a = db.get(MediaAsset, asset_id)
@@ -141,7 +141,7 @@ def get_asset(
 @router.delete("/{asset_id}")
 def delete_asset(
     asset_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         a = db.get(MediaAsset, asset_id)

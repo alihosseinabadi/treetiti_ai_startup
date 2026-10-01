@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.models import User
 from app.services import directory
@@ -57,7 +57,7 @@ def _to_dict(client: "directory.ClientProfile") -> dict[str, Any]:
 @router.post("/onboard")
 def onboard(
     payload: OnboardRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict[str, Any]:
     if not payload.link.strip():
         raise HTTPException(status_code=400, detail="link is required")
@@ -78,7 +78,7 @@ def onboard(
 @router.get("/{client_id}")
 def get(
     client_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict[str, Any]:
     client = directory.get_directory(client_id)
     if client is None:
@@ -88,6 +88,6 @@ def get(
 
 @router.get("")
 def list_all(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> list[dict[str, Any]]:
     return [_to_dict(c) for c in directory.list_directories()]

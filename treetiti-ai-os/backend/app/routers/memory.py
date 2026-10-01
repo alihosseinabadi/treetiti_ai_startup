@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.memory.store import (
     search_global_memory,
@@ -69,7 +69,7 @@ class MemorySearchRequest(BaseModel):
 
 @router.get("", response_model=list[MemoryResponse])
 def list_memories(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     scope: str = Query(default="global", pattern="^(global|client|team|teammate|project|conversation|task)$"),
     scope_id: str = Query(default=""),
@@ -101,7 +101,7 @@ def list_memories(
 @router.post("", response_model=MemoryResponse, status_code=201)
 def create_memory(
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     entry = MemoryEntry(
@@ -132,7 +132,7 @@ def create_memory(
 @router.post("/search", response_model=list[dict])
 def search_memories(
     payload: MemorySearchRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> list[dict]:
     return search_memory(
         query=payload.query,
@@ -146,7 +146,7 @@ def search_memories(
 @router.delete("/{memory_id}")
 def delete_memory_endpoint(
     memory_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     entry = db.query(MemoryEntry).filter(MemoryEntry.id == memory_id).first()
@@ -160,7 +160,7 @@ def delete_memory_endpoint(
 @router.post("/forget", response_model=list[dict])
 def forget_memory(
     payload: MemorySearchRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> list[dict]:
     """Find memories matching the query that the user might want to forget."""
     return find_memory_to_forget(payload.query, payload.limit)
@@ -170,7 +170,7 @@ def forget_memory(
 @router.post("/global", response_model=MemoryResponse, status_code=201)
 def create_global_memory(
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "global"
@@ -181,7 +181,7 @@ def create_global_memory(
 def create_client_memory(
     client_name: str,
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "client"
@@ -193,7 +193,7 @@ def create_client_memory(
 def create_team_memory(
     team_id: str,
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "team"
@@ -205,7 +205,7 @@ def create_team_memory(
 def create_teammate_memory(
     teammate_id: str,
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "teammate"
@@ -217,7 +217,7 @@ def create_teammate_memory(
 def create_project_memory(
     project_id: str,
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "project"
@@ -229,7 +229,7 @@ def create_project_memory(
 def create_conversation_memory(
     session_id: str,
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "conversation"
@@ -241,7 +241,7 @@ def create_conversation_memory(
 def create_task_memory(
     task_id: str,
     payload: MemoryCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> MemoryResponse:
     payload.scope = "task"

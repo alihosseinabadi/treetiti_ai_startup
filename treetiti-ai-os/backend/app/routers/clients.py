@@ -14,7 +14,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import SessionLocal
 from app.missions import mission_dict
 from app.models import Approval, ClientProfile, Lead, Mission, MissionRun, User
@@ -99,7 +99,7 @@ def _client_card(db, name: str) -> dict[str, Any]:
 
 @router.get("")
 def list_clients(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> list[dict[str, Any]]:
     with SessionLocal() as db:
         names: set[str] = set()
@@ -117,7 +117,7 @@ def list_clients(
 @router.get("/{client_name}")
 def get_client(
     client_name: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict[str, Any]:
     with SessionLocal() as db:
         card = _client_card(db, client_name)

@@ -14,7 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import SessionLocal
 from app.models import BrandContentCampaign, User
 
@@ -39,7 +39,7 @@ class CampaignUpdate(BaseModel):
 
 @router.get("")
 def list_campaigns(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     status: str = "",
 ) -> list[dict]:
     with SessionLocal() as db:
@@ -53,7 +53,7 @@ def list_campaigns(
 @router.post("")
 def create_campaign(
     payload: CampaignCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         c = BrandContentCampaign(
@@ -71,7 +71,7 @@ def create_campaign(
 @router.get("/{campaign_id}")
 def get_campaign(
     campaign_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     with SessionLocal() as db:
         c = db.get(BrandContentCampaign, campaign_id)
@@ -84,7 +84,7 @@ def get_campaign(
 def update_campaign(
     campaign_id: str,
     payload: CampaignUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         c = db.get(BrandContentCampaign, campaign_id)
@@ -100,7 +100,7 @@ def update_campaign(
 @router.delete("/{campaign_id}")
 def archive_campaign(
     campaign_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         c = db.get(BrandContentCampaign, campaign_id)

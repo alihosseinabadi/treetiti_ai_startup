@@ -5,16 +5,15 @@ from __future__ import annotations
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.agents import get_agent
-from app.config import get_settings
 from app.database import get_db
 from app.models import Lead, User
-from app.webhook_security import require_webhook_secret
+from app.webhook_security import check_lead_request, webhook_rate_limit
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -25,6 +24,8 @@ class LeadCreate(BaseModel):
     company: str = ""
     message: str = ""
     phone: str = ""
+    # Honeypot: real forms never fill this; bots do. Non-empty → rejected.
+    website: str = ""
 
 
 def _serialize(lead: Lead) -> dict:
@@ -76,18 +77,23 @@ def _save_lead(db: Session, payload: LeadCreate, qualify: bool = True) -> Lead:
 @router.post("")
 def create_lead(
     payload: LeadCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
-    x_webhook_secret: Annotated[str | None, Header()] = None,
+    _rl: Annotated[str, Depends(webhook_rate_limit("leads", 10))],
 ) -> dict:
-    """Open endpoint — n8n posts form leads here."""
-    require_webhook_secret(x_webhook_secret)
+    """Public lead form — n8n/posts form leads here.
+
+    Guarded by rate limit + honeypot + origin check (amendment 4), NOT by
+    HMAC: this is a public form, not a machine integration.
+    """
+    check_lead_request(request, payload.website)
     lead = _save_lead(db, payload, qualify=True)
     return _serialize(lead)
 
 
 @router.get("")
 def list_leads(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     status: str | None = None,
     limit: int = 50,
@@ -103,7 +109,7 @@ def list_leads(
 def update_lead_status(
     lead_id: str,
     status: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     if status not in ["new", "contacted", "qualified", "won", "lost"]:

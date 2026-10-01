@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.connectors import configure_connector, list_connectors, test_connector
 from app.database import get_db
 from app.models import User
@@ -27,7 +27,7 @@ class ConnectorConfig(BaseModel):
 
 @router.get("")
 def list_all(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     return {"connectors": list_connectors(db)}
@@ -37,7 +37,7 @@ def list_all(
 def configure(
     connector_id: str,
     body: ConnectorConfig,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     try:
@@ -49,7 +49,7 @@ def configure(
 @router.post("/{connector_id}/test")
 def test(
     connector_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     try:

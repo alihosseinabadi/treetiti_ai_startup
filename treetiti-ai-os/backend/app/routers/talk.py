@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.core.events import Event, bus
 from app.database import get_db
 from app.models import TalkMessage, TalkRoom, User
@@ -88,7 +88,7 @@ def _team_speakers(db: Session, team_id: str) -> tuple[list[str], str]:
 @router.post("/rooms")
 def create_room(
     body: RoomCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     from app.agents import AGENTS  # noqa: PLC0415
@@ -122,7 +122,7 @@ def create_room(
 
 @router.get("/rooms")
 def list_rooms(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[dict]:
     rooms = db.query(TalkRoom).order_by(TalkRoom.updated_at.desc()).all()
@@ -132,7 +132,7 @@ def list_rooms(
 @router.get("/rooms/{room_id}")
 def get_room(
     room_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     return room_dict(_get_room(db, room_id), db)
@@ -141,7 +141,7 @@ def get_room(
 @router.get("/rooms/{room_id}/messages")
 def get_messages(
     room_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     limit: int = 200,
 ) -> dict:
@@ -162,7 +162,7 @@ def get_messages(
 @router.delete("/rooms/{room_id}")
 def delete_room(
     room_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     room = _get_room(db, room_id)
@@ -176,7 +176,7 @@ def delete_room(
 def send_message(
     room_id: str,
     body: RoomMessage,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     """You talk to the room. The bots then react (round starts in background)."""
@@ -195,7 +195,7 @@ def send_message(
 def kick_round(
     room_id: str,
     body: RoundKick,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     """The floor is open: every bot in the room reacts to the current talk."""
@@ -259,7 +259,7 @@ async def _room_stream(room_id: str) -> Any:
 @router.get("/rooms/{room_id}/stream")
 def room_stream(
     room_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> StreamingResponse:
     """Live SSE feed for one War Room: thinking stages + replies stream in."""
     return StreamingResponse(

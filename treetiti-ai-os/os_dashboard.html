@@ -441,7 +441,12 @@ document.getElementById('newchat').onclick=()=>{newChat();syncSide();};
 document.getElementById('newchat2').onclick=()=>newChat();
 document.getElementById('searchbox').addEventListener('input',e=>loadSessions(e.target.value));
 document.getElementById('sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeSheet();});
-async function boot(){try{const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'aalleeiiii',password:''})});
-TOK=(await r.json()).access_token;await loadSessions('');await loadProjects();}catch(e){pushBot('Could not reach the backend — is it running on :8091?');}}
+async function boot(){try{
+  let em=sessionStorage.getItem('os_email'),pw=sessionStorage.getItem('os_pw');
+  if(!em){em=prompt('OS email:','admin@treetiti.com')||'';pw=prompt('OS password:')||'';
+    sessionStorage.setItem('os_email',em);sessionStorage.setItem('os_pw',pw);}
+  const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});
+  if(!r.ok){sessionStorage.removeItem('os_email');sessionStorage.removeItem('os_pw');throw new Error('login failed');}
+  TOK=(await r.json()).access_token;await loadSessions('');await loadProjects();}catch(e){pushBot('Could not reach the backend — is it running on :8091? (check email/password)');}}
 boot();
 </script></body></html>

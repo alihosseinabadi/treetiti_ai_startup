@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.models import ResearchReport, User
 from app.research import run_deep_research
@@ -59,7 +59,7 @@ def _report_dict(r: ResearchReport) -> dict:
 
 @router.get("")
 def list_reports(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     context: str = "",
 ) -> dict:
@@ -73,7 +73,7 @@ def list_reports(
 @router.post("")
 def create_report(
     body: ResearchCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     client = _client_of(body.context)
@@ -107,7 +107,7 @@ def create_report(
 @router.get("/{report_id}")
 def get_report(
     report_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     report = db.get(ResearchReport, report_id)
@@ -119,7 +119,7 @@ def get_report(
 @router.delete("/{report_id}")
 def delete_report(
     report_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     report = db.get(ResearchReport, report_id)

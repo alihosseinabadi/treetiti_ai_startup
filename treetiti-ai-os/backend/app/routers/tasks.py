@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.core.events import Event, bus
 from app.core.task_queue import (
     TERMINAL_STATUSES,
@@ -120,7 +120,7 @@ class TaskCreate(BaseModel):
 @router.post("", status_code=201)
 def create_task(
     body: TaskCreate,
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     q = _app_queue()
     if body.kind not in {"echo", "workflow", "langgraph", "agent"}:
@@ -131,7 +131,7 @@ def create_task(
 
 @router.get("")
 def list_tasks(
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     status: str | None = None,
     limit: int = Query(50, ge=1, le=200),
 ) -> dict:
@@ -142,7 +142,7 @@ def list_tasks(
 @router.get("/{task_id}")
 def get_task(
     task_id: str,
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     task = _app_queue().get(task_id)
     if task is None:
@@ -153,7 +153,7 @@ def get_task(
 @router.post("/{task_id}/cancel")
 def cancel_task(
     task_id: str,
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     q = _app_queue()
     task = q.get(task_id)
@@ -172,7 +172,7 @@ class TaskReassign(BaseModel):
 @router.post("/{task_id}/retry")
 def retry_task(
     task_id: str,
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     """Re-run a finished (failed/completed) task as a fresh task."""
     q = _app_queue()
@@ -197,7 +197,7 @@ def retry_task(
 def reassign_task(
     task_id: str,
     body: TaskReassign,
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     """Give a finished task to a different agent (re-runs it)."""
     from app.agents import get_agent
@@ -230,7 +230,7 @@ def reassign_task(
 # ---------------------------------------------------------------------------
 
 @router.get("/{task_id}/events")
-def task_event_stream(task_id: str, _: Annotated[User, Depends(get_current_user)]) -> StreamingResponse:
+def task_event_stream(task_id: str, _: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> StreamingResponse:
     q = _app_queue()
     if q.get(task_id) is None:
         raise HTTPException(status_code=404, detail=f"task {task_id!r} not found")
@@ -242,7 +242,7 @@ def task_event_stream(task_id: str, _: Annotated[User, Depends(get_current_user)
 
 
 @stream_router.get("/stream")
-def global_stream(_: Annotated[User, Depends(get_current_user)]) -> StreamingResponse:
+def global_stream(_: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> StreamingResponse:
     """Team activity: every event on the bus, live."""
     return StreamingResponse(
         _event_stream(_app_queue()),

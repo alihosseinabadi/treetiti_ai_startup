@@ -20,7 +20,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import SessionLocal
 from app.llm import llm_json
 from app.models import Project, User
@@ -203,7 +203,7 @@ def _run_step(agent_key: str, brief: str) -> str:
 
 
 @router.post("/plan")
-def plan(payload: PlanRequest, user: Annotated[User, Depends(get_current_user)]) -> dict:
+def plan(payload: PlanRequest, user: Annotated[User, Depends(require_role("admin", "editor"))]) -> dict:
     """Hear the goal, assemble the team, make the project folder."""
     goal = (payload.goal or "").strip()
     if not goal:
@@ -233,7 +233,7 @@ def plan(payload: PlanRequest, user: Annotated[User, Depends(get_current_user)])
 
 
 @router.post("/answer")
-def answer(payload: AnswerRequest, user: Annotated[User, Depends(get_current_user)]) -> dict:
+def answer(payload: AnswerRequest, user: Annotated[User, Depends(require_role("admin", "editor"))]) -> dict:
     """Fold the user's answers in — the run becomes ready."""
     run = _RUNS.get(payload.run_id)
     if run is None:
@@ -245,7 +245,7 @@ def answer(payload: AnswerRequest, user: Annotated[User, Depends(get_current_use
 
 
 @router.post("/execute")
-def execute(payload: ExecuteRequest, user: Annotated[User, Depends(get_current_user)]) -> dict:
+def execute(payload: ExecuteRequest, user: Annotated[User, Depends(require_role("admin", "editor"))]) -> dict:
     """Run the team step by step (each sees prior results), then report."""
     run = _RUNS.get(payload.run_id)
     if run is None:
@@ -283,7 +283,7 @@ def execute(payload: ExecuteRequest, user: Annotated[User, Depends(get_current_u
 
 
 @router.get("/runs/{run_id}")
-def run_status(run_id: str, user: Annotated[User, Depends(get_current_user)]) -> dict:
+def run_status(run_id: str, user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> dict:
     """Current state of a run (for polling / debugging)."""
     run = _RUNS.get(run_id)
     if run is None:

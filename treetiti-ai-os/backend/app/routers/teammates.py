@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.models import Team, Teammate, TeammateActivity, User
 
@@ -197,7 +197,7 @@ def _to_team_response(t: Team) -> TeamResponse:
 
 @router.get("", response_model=list[TeammateResponse])
 def list_teammates(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     active_only: bool = True,
 ) -> list[TeammateResponse]:
@@ -210,7 +210,7 @@ def list_teammates(
 
 @router.get("/pinned", response_model=list[TeammateResponse])
 def list_pinned_teammates(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> list[TeammateResponse]:
     teammates = db.query(Teammate).filter(Teammate.is_pinned == True, Teammate.is_active == True).all()  # noqa: E712
@@ -224,7 +224,7 @@ def list_pinned_teammates(
 
 @router.get("/teams", response_model=list[TeamResponse])
 def list_teams(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     active_only: bool = True,
 ) -> list[TeamResponse]:
@@ -238,7 +238,7 @@ def list_teams(
 @router.get("/teams/{team_id}", response_model=TeamResponse)
 def get_team(
     team_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeamResponse:
     team = db.query(Team).filter(Team.id == team_id).first()
@@ -250,7 +250,7 @@ def get_team(
 @router.post("/teams", response_model=TeamResponse, status_code=201)
 def create_team(
     payload: TeamCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeamResponse:
     if payload.chief_id:
@@ -272,7 +272,7 @@ def create_team(
 def update_team(
     team_id: str,
     payload: TeamUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeamResponse:
     team = db.query(Team).filter(Team.id == team_id).first()
@@ -298,7 +298,7 @@ def update_team(
 @router.delete("/teams/{team_id}")
 def delete_team(
     team_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     team = db.query(Team).filter(Team.id == team_id).first()
@@ -312,7 +312,7 @@ def delete_team(
 @router.get("/{teammate_id}", response_model=TeammateResponse)
 def get_teammate(
     teammate_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeammateResponse:
     teammate = db.query(Teammate).filter(Teammate.id == teammate_id).first()
@@ -324,7 +324,7 @@ def get_teammate(
 @router.post("", response_model=TeammateResponse, status_code=201)
 def create_teammate(
     payload: TeammateCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeammateResponse:
     _validate_teammate(payload)
@@ -339,7 +339,7 @@ def create_teammate(
 def update_teammate(
     teammate_id: str,
     payload: TeammateUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeammateResponse:
     teammate = db.query(Teammate).filter(Teammate.id == teammate_id).first()
@@ -372,7 +372,7 @@ def update_teammate(
 @router.delete("/{teammate_id}")
 def delete_teammate(
     teammate_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     teammate = db.query(Teammate).filter(Teammate.id == teammate_id).first()
@@ -386,7 +386,7 @@ def delete_teammate(
 @router.post("/{teammate_id}/pin")
 def pin_teammate(
     teammate_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeammateResponse:
     teammate = db.query(Teammate).filter(Teammate.id == teammate_id).first()
@@ -401,7 +401,7 @@ def pin_teammate(
 @router.post("/{teammate_id}/unpin")
 def unpin_teammate(
     teammate_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> TeammateResponse:
     teammate = db.query(Teammate).filter(Teammate.id == teammate_id).first()
@@ -420,7 +420,7 @@ def unpin_teammate(
 @router.get("/{teammate_id}/activity", response_model=list[ActivityResponse])
 def get_teammate_activity(
     teammate_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     limit: int = 50,
 ) -> list[ActivityResponse]:
@@ -456,7 +456,7 @@ def get_teammate_activity(
 
 @router.get("/registry/agents")
 def list_agent_keys(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict[str, dict[str, str]]:
     from app.agents import AGENTS
     return {
@@ -471,20 +471,20 @@ def list_agent_keys(
 
 @router.get("/registry/tools")
 def list_tools(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> list[str]:
     return sorted(VALID_TOOLS)
 
 
 @router.get("/registry/memory-scopes")
 def list_memory_scopes(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> list[str]:
     return sorted(VALID_MEMORY_SCOPES)
 
 
 @router.get("/registry/autonomy-levels")
 def list_autonomy_levels(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> list[str]:
     return sorted(AUTONOMY_LEVELS)

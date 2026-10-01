@@ -18,7 +18,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.core.events import MISSION_CREATED, MISSION_INSTRUCTED, MISSION_PAUSED, MISSION_RESUMED, emit
 from app.database import SessionLocal
 from app.missions import mission_dict, run_mission_cycle
@@ -71,7 +71,7 @@ def _run_dict(r: MissionRun) -> dict:
 
 @router.get("")
 def list_missions(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     status: str = "",
 ) -> list[dict]:
     with SessionLocal() as db:
@@ -87,7 +87,7 @@ def list_missions(
 @router.post("", status_code=201)
 def create_mission(
     payload: MissionCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     if not payload.name.strip():
         raise HTTPException(status_code=400, detail="name is required")
@@ -114,7 +114,7 @@ def create_mission(
 @router.get("/{mission_id}")
 def get_mission(
     mission_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
 ) -> dict:
     with SessionLocal() as db:
         m = db.get(Mission, mission_id)
@@ -127,7 +127,7 @@ def get_mission(
 def update_mission(
     mission_id: str,
     payload: MissionUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         m = db.get(Mission, mission_id)
@@ -157,7 +157,7 @@ def update_mission(
 @router.post("/{mission_id}/duplicate")
 def duplicate_mission(
     mission_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     """Copy a mission — same goal/cadence/config, starts paused so the user
     can tweak before relaunching."""
@@ -186,7 +186,7 @@ def duplicate_mission(
 @router.post("/{mission_id}/start")
 def start_mission(
     mission_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         m = db.get(Mission, mission_id)
@@ -203,7 +203,7 @@ def start_mission(
 @router.post("/{mission_id}/pause")
 def pause_mission(
     mission_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     with SessionLocal() as db:
         m = db.get(Mission, mission_id)
@@ -225,7 +225,7 @@ class RunCycleRequest(BaseModel):
 def run_mission_now(
     mission_id: str,
     payload: RunCycleRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     """Run a cycle NOW on the background queue (returns the task id)."""
     from app.core.task_queue import get_queue
@@ -252,7 +252,7 @@ def run_mission_now(
 def talk_to_mission(
     mission_id: str,
     payload: TalkRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
 ) -> dict:
     """Send a steering instruction; the next cycle honors it (§15)."""
     if not payload.instruction.strip():
@@ -277,7 +277,7 @@ def talk_to_mission(
 @router.get("/{mission_id}/runs")
 def list_mission_runs(
     mission_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     limit: int = 50,
 ) -> list[dict]:
     with SessionLocal() as db:

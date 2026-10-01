@@ -16,6 +16,7 @@ from app.auth import ensure_admin_user
 from app.brain import seed_business_knowledge
 from app.config import get_settings
 from app.database import ensure_schema
+from app.default_deny import DefaultDenyMiddleware
 from app.logging_config import configure_logging
 from app.routers import (
     agents, approvals, assets, auth, campaigns, chat,
@@ -32,6 +33,7 @@ logger = logging.getLogger("treetiti")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
+    get_settings().validate_prod()
     ensure_schema()
     ensure_admin_user()
     seed_business_knowledge()
@@ -44,22 +46,37 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    prod = settings.is_prod
     app = FastAPI(
         title=settings.app_name,
         version="0.1.0",
         lifespan=lifespan,
+        # Amendment 3: no interactive docs in production.
+        docs_url=None if prod else "/docs",
+        redoc_url=None if prod else "/redoc",
+        openapi_url=None if prod else "/openapi.json",
     )
 
+    # Default-deny runs INSIDE CORS (added first = innermost) so CORS
+    # preflights are answered before auth is evaluated.
+    app.add_middleware(DefaultDenyMiddleware)
+
+    cors_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8000",
+        "http://localhost:8001",
+        "http://localhost:5678",
+        settings.public_base_url.rstrip("/"),
+    ]
+    if prod and ("*" in cors_origins or not settings.public_base_url.startswith("https://")):
+        raise RuntimeError(
+            "Refusing to start in production: CORS must not be '*' and "
+            "PUBLIC_BASE_URL must be https"
+        )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:8000",
-            "http://localhost:8001",
-            "http://localhost:5678",
-            settings.public_base_url.rstrip("/"),
-        ],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Webhook-Secret", "X-Telegram-Bot-Api-Secret-Token"],

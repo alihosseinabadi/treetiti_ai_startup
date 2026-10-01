@@ -17,7 +17,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.core.model_registry import get_registry
 from app.core.provider_capability import provider_list
 from app.models import User
@@ -86,20 +86,20 @@ def run_health_probes(*, force: bool = False) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 @router.get("")
-def providers(_: Annotated[User, Depends(get_current_user)]) -> dict:
+def providers(_: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> dict:
     """Provider capability registry + which keys are configured."""
     return {"providers": provider_list()}
 
 
 @router.get("/models")
-def models(_: Annotated[User, Depends(get_current_user)]) -> dict:
+def models(_: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> dict:
     """The routed model catalog — every model the OS knows about."""
     reg = get_registry()
     return {"models": reg.to_dicts()}
 
 
 @router.get("/health")
-def health(_: Annotated[User, Depends(get_current_user)], force: bool = False) -> dict:
+def health(_: Annotated[User, Depends(require_role("admin", "editor", "viewer"))], force: bool = False) -> dict:
     """Live gateway health probe per capability tier (cached 30s)."""
     return {
         "gateway": get_settings().router_base_url,
@@ -109,7 +109,7 @@ def health(_: Annotated[User, Depends(get_current_user)], force: bool = False) -
 
 
 @router.get("/usage")
-def usage(_: Annotated[User, Depends(get_current_user)]) -> dict:
+def usage(_: Annotated[User, Depends(require_role("admin", "editor", "viewer"))]) -> dict:
     """Today's per-provider request usage vs daily limits."""
     s = get_settings()
     rows: list[dict] = []
@@ -141,7 +141,7 @@ def usage(_: Annotated[User, Depends(get_current_user)]) -> dict:
 
 
 @router.post("/health/probe")
-def probe(_: Annotated[User, Depends(get_current_user)]) -> dict:
+def probe(_: Annotated[User, Depends(require_role("admin", "editor"))]) -> dict:
     """Force a fresh gateway health probe."""
     return {
         "gateway": get_settings().router_base_url,

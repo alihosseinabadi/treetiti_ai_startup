@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import require_role
 from app.database import get_db
 from app.models import Routine, User
 
@@ -71,7 +71,7 @@ class RoutineRunRequest(BaseModel):
 
 @router.get("", response_model=list[RoutineResponse])
 def list_routines(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
     active_only: bool = True,
 ) -> list[RoutineResponse]:
@@ -104,7 +104,7 @@ def list_routines(
 @router.get("/{routine_id}", response_model=RoutineResponse)
 def get_routine(
     routine_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor", "viewer"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> RoutineResponse:
     routine = db.query(Routine).filter(Routine.id == routine_id).first()
@@ -132,7 +132,7 @@ def get_routine(
 @router.post("", response_model=RoutineResponse, status_code=201)
 def create_routine(
     payload: RoutineCreate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> RoutineResponse:
     if payload.teammate_id:
@@ -173,7 +173,7 @@ def create_routine(
 def update_routine(
     routine_id: str,
     payload: RoutineUpdate,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> RoutineResponse:
     routine = db.query(Routine).filter(Routine.id == routine_id).first()
@@ -220,7 +220,7 @@ def update_routine(
 async def run_routine(
     routine_id: str,
     payload: RoutineRunRequest,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     routine = db.query(Routine).filter(Routine.id == routine_id).first()
@@ -246,7 +246,7 @@ async def run_routine(
 @router.post("/{routine_id}/pause")
 def pause_routine(
     routine_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> RoutineResponse:
     routine = db.query(Routine).filter(Routine.id == routine_id).first()
@@ -277,7 +277,7 @@ def pause_routine(
 @router.post("/{routine_id}/resume")
 def resume_routine(
     routine_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> RoutineResponse:
     routine = db.query(Routine).filter(Routine.id == routine_id).first()
@@ -308,7 +308,7 @@ def resume_routine(
 @router.delete("/{routine_id}")
 def delete_routine(
     routine_id: str,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_role("admin", "editor"))],
     db: Annotated[Session, Depends(get_db)],
 ) -> dict:
     routine = db.query(Routine).filter(Routine.id == routine_id).first()
