@@ -12,6 +12,34 @@ self-hosted, free-models-only AI agency backend.
 | `customer_treetiti/` | Customer Service Directory blueprint (spec document) |
 | `treetiti_partners/findii/` | FindII — AI real-estate lead agent (Avito + Telegram + OSM map-grounded scoring, web CRM) |
 
+## Architecture
+
+```
+                        ┌─────────────────────────────────┐
+                        │  Clients: dashboard (:8091/os)  │
+                        │  Vite landing (treetiti/)       │
+                        │  Telegram / n8n / lead forms    │
+                        └───────────────┬─────────────────┘
+                                        │ JWT / HMAC / secret_token
+                                        ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  FastAPI backend (treetiti-ai-os/backend)   default-deny + roles │
+│  routers/ → agents · orchestrator · chat · approvals · assets …  │
+│  core/ → registry · queue · workflow · events · qa · permissions  │
+│  services/ → media · mail · social · connect                     │
+└───────┬──────────────────────────┬───────────────┬───────────────┘
+        │ SQLAlchemy                 │ Trail         │ Keys (free tiers)
+        ▼                            ▼               ▼
+┌───────────────┐            treetiti.audit   model_router (FREE_ONLY)
+│ Postgres +    │            (security log)          │
+│ pgvector  /   │                                     ▼
+│ SQLite (dev)  │                          opencode · ollama · groq …
+└───────────────┘                          groq/openrouter/zai/cf …
+```
+
+Security model: `treetiti-ai-os/docs/SECURITY.md`. Tenant isolation,
+event bus and connector framework land in Phases 1–3.
+
 ## Backend quickstart (`treetiti-ai-os/backend`)
 
 ```bash

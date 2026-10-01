@@ -1,18 +1,38 @@
 -- Seed admin users into auth.users (idempotent)
 -- Uses pgcrypto for bcrypt password hashing
--- Run only on local/dev — never in production
+--
+-- Phase 0: NO credentials live in this file. Pass them as psql variables:
+--   psql "$DB_URL" -v admin_emails="'a@x.io','b@x.io'" -v admin_password='...' \
+--     -f supabase/migrations/004_admin_users.sql
+-- The migration REFUSES to run with an empty/short password.
+-- Run only on local/dev — never in production (use the backend
+-- POST /auth/setup first-run flow there).
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
+\if :{?admin_password}
+\else
+  \echo 'REFUSING: pass -v admin_password=... (>= 12 chars, never committed)'
+  \quit 1
+\endif
 
 DO $$
 DECLARE
   user_id uuid;
   v_email text;
-  admin_emails text[] := ARRAY['hosseinabadiia@gmail.com', 'erfnho3einabadi@gmail.com'];
-  admin_password text := '123Aliappleid456!';
+  admin_list text := :'admin_emails';
+  admin_password text := :'admin_password';
 BEGIN
-  FOREACH v_email IN ARRAY admin_emails
+  IF admin_password IS NULL OR length(admin_password) < 12 THEN
+    RAISE EXCEPTION 'REFUSING: admin_password must be >= 12 chars (passed via -v, never committed)';
+  END IF;
+  IF admin_list IS NULL OR admin_list = '' THEN
+    RAISE EXCEPTION 'REFUSING: pass -v admin_emails=''''a@x.io'',''b@x.io''''';
+  END IF;
+
+  FOREACH v_email IN ARRAY string_to_array(admin_list, ',')
   LOOP
+    v_email := trim(both ' ' FROM trim(both '''' FROM trim(v_email)));
     -- Skip if already exists
     IF EXISTS (SELECT 1 FROM auth.users u WHERE u.email = v_email) THEN
       CONTINUE;
@@ -42,10 +62,7 @@ BEGIN
       '',
       false, false,
       '{"provider": "email", "providers": ["email"]}'::jsonb,
-      CASE
-        WHEN v_email = 'hosseinabadiia@gmail.com' THEN '{"name": "Ali Hosseinabadi", "role": "admin"}'::jsonb
-        WHEN v_email = 'erfnho3einabadi@gmail.com' THEN '{"name": "Erfan Hosseinabadi", "role": "admin"}'::jsonb
-      END,
+      jsonb_build_object('name', 'Admin', 'role', 'admin'),
       NOW(), NOW(), NOW()
     )
     RETURNING id INTO user_id;

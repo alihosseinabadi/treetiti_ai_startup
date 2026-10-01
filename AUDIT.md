@@ -10,10 +10,10 @@ The spec mandates: audit before implementation, no invented claims. Every statem
 
 ```
 our_company/  (= git repo treetiti_ai_startup)
-├── kimi-bridge.md                 # Kimi <-> opencode message board (added by us)
-├── watch-bridge.sh                # git-polling watcher that runs opencode on new Kimi replies
 ├── AUDIT.md                       # this deliverable
-├── customer_treetiti/             # single file: CUSTOMER_SERVICE_DIRECTORY.md (blueprint for Directory service)
+├── media/                         # company videos/profiles (moved out of root, Phase 0.5)
+├── customer_treetiti/             # chegovara client work + CUSTOMER_SERVICE_DIRECTORY.md
+│   (customer_treetiti/treetiti/ stale duplicate removed Phase 0.5; treetiti/ is canonical)
 ├── treetiti/                      # NEXT/React 19 luxury marketing site (Vite 8, React 19, Tailwind 4)
 │   ├── src/                       # cinematic homepage + Supabase CRM admin (see Frontend map)
 │   ├── supabase/                  # migrations + edge functions (chat-webhook, groq-chat)
@@ -23,6 +23,7 @@ our_company/  (= git repo treetiti_ai_startup)
 │   ├── AGENTS.md                  # locked-in architectural intent (not all followed)
 │   └── scence 07/ , intro_video/, public/scenes/07/   # unreferenced design mockups
 └── treetiti-ai-os/                # THE AI AGENCY OS (FastAPI backend + React dashboard)
+    ├── docs/                      # incl. kimi-bridge.md (moved from root, Phase 0.5)
     ├── backend/                   # Python 3.12 + FastAPI + SQLAlchemy + pgvector
     │   ├── app/
     │   │   ├── main.py            # app factory, lifespan, 9 routers, SPA mount
