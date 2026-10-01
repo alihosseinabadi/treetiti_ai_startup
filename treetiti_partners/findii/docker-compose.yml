@@ -1,0 +1,13 @@
+services:
+  findii:
+    build:
+      context: .
+      args:
+        INSTALL_BROWSERS: "false"   # set "true" to enable the stealth engine inside Docker
+    container_name: findii-agent
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

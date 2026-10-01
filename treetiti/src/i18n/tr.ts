@@ -405,6 +405,7 @@ const tr = {
     title1: "Ortaklarımızla",
     title2: "birlikte kuruldu.",
     desc: "Treetiti'nin YZ, marka ve içerik motoruyla büyüyen gerçek girişimler.",
+    findiiName: "Findii",
     findiiTag: "Gayrimenkul için otonom YZ müşteri adayı ajanı.",
     findiiDesc: "Avito'yu tarar, Telegram kanallarını izler, LLM ile yapılandırılmış adayları çıkarır, 0–100 puanlar ve satışı yerleşik web CRM'de yönetir — her sıcak adayda Telegram uyarısıyla.",
     findiiC1: "Avito tarama",
@@ -413,6 +414,15 @@ const tr = {
     findiiC4: "Web CRM",
     findiiMeta: "Gayrimenkul · YZ ajanı",
     findiiCta: "Findii ile tanış",
+    myresumeName: "MyResume",
+    myresumeTag: "İlana göre uyarlanan YZ özgeçmiş",
+    myresumeDesc: "İş ilanını yapıştır, saniyeler içinde uyarlanmış CV al — YZ özetleri, başarılar ve beceriler, premium şablonlar, ön yazılar ve paylaşılabilir CV bağlantıları. API anahtarı olmadan çevrimdışı bile çalışır.",
+    myresumeC1: "YZ Uyarlama",
+    myresumeC2: "Şablonlar",
+    myresumeC3: "Paylaşım Bağlantısı",
+    myresumeC4: "Ön Yazılar",
+    myresumeMeta: "İK Teknolojisi · YZ Ürünü",
+    myresumeCta: "Projeyi gör",
     nextTitle: "Sıradaki sen olabilirsin.",
     nextDesc: "Değerli bir şey mi var? Ortaklığa başvur.",
     nextCta: "Ortak ol",
@@ -664,7 +674,7 @@ const tr = {
     columns: [
       {
         title: "Hizmetler",
-        links: ["YZ Web Tasarımı", "YZ Otomasyonu", "YZ İş Akışları", "YZ İçerik Üretimi", "Özel YZ Çözümleri"],
+        links: ["YZ Web Tasarımı", "YZ Otomasyonu", "YZ İş Akışları", "YZ İçerik Üretimi", "Özel YZ Çözümleri", "Ortak Girişimler"],
       },
       {
         title: "Platform",

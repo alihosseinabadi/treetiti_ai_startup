@@ -9,7 +9,7 @@ gsap.registerPlugin(ScrollTrigger)
 
 interface Partner {
   id: string
-  name: string
+  nameKey: string
   tagKey: string
   descKey: string
   chipKeys: string[]
@@ -22,7 +22,7 @@ interface Partner {
 const PARTNERS: Partner[] = [
   {
     id: "findii",
-    name: "Findii",
+    nameKey: "partners.findiiName",
     tagKey: "partners.findiiTag",
     descKey: "partners.findiiDesc",
     chipKeys: ["partners.findiiC1", "partners.findiiC2", "partners.findiiC3", "partners.findiiC4"],
@@ -30,6 +30,17 @@ const PARTNERS: Partner[] = [
     ctaKey: "partners.findiiCta",
     link: "https://github.com/alihosseinabadi/findii",
     accent: "#6EA8FF",
+  },
+  {
+    id: "myresume",
+    nameKey: "partners.myresumeName",
+    tagKey: "partners.myresumeTag",
+    descKey: "partners.myresumeDesc",
+    chipKeys: ["partners.myresumeC1", "partners.myresumeC2", "partners.myresumeC3", "partners.myresumeC4"],
+    metaKey: "partners.myresumeMeta",
+    ctaKey: "partners.myresumeCta",
+    link: "https://github.com/alihosseinabadi",
+    accent: "#34d399",
   },
 ]
 
@@ -154,7 +165,7 @@ export default function Scene09_Partners() {
                 </span>
               </div>
               <h3 className="text-[clamp(2rem,4.5vw,3.2rem)] font-display font-bold text-white leading-none tracking-tight mb-3">
-                {p.name}
+                {t(p.nameKey)}
               </h3>
               <p className="text-[15px] md:text-base font-medium mb-4" style={{ color: p.accent }}>
                 {t(p.tagKey)}

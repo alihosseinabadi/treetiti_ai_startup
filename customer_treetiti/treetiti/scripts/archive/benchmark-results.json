@@ -1,0 +1,86 @@
+[
+  {
+    "status": "OK",
+    "response": "Hello from the Cohere team!",
+    "score": 10,
+    "latency": 3610,
+    "name": "Cohere"
+  },
+  {
+    "name": "Mistral AI",
+    "status": "FAILED",
+    "error": "HTTP 429",
+    "latency": 709,
+    "score": 1
+  },
+  {
+    "name": "Groq",
+    "status": "FAILED",
+    "error": "The model `llama-3.1-8b-instant` does not exist or you do not have access to it.",
+    "latency": 513,
+    "score": 1
+  },
+  {
+    "name": "Cerebras",
+    "status": "FAILED",
+    "error": "HTTP 404",
+    "latency": 718,
+    "score": 1
+  },
+  {
+    "name": "DeepSeek",
+    "status": "FAILED",
+    "error": "Insufficient Balance",
+    "latency": 1227,
+    "score": 1
+  },
+  {
+    "name": "Requesty",
+    "status": "FAILED",
+    "error": "Invalid authorization token",
+    "latency": 1229,
+    "score": 1
+  },
+  {
+    "name": "Google Gemini",
+    "status": "FAILED",
+    "error": "models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.",
+    "latency": 717,
+    "score": 1
+  },
+  {
+    "name": "LockLLM",
+    "status": "FAILED",
+    "error": "HTTP 404",
+    "latency": 629,
+    "score": 1
+  },
+  {
+    "name": "SambaNova",
+    "status": "FAILED",
+    "error": "A payment method is required. Add one at https://cloud.sambanova.ai/plans/billing to continue.",
+    "latency": 1008,
+    "score": 1
+  },
+  {
+    "name": "Pollinations",
+    "status": "FAILED",
+    "error": "HTTP 404",
+    "latency": 1026,
+    "score": 1
+  },
+  {
+    "name": "BFL.ai (Flux)",
+    "status": "FAILED",
+    "error": "HTTP 404",
+    "latency": 818,
+    "score": 1
+  },
+  {
+    "name": "Omni Router",
+    "status": "FAILED",
+    "error": "fetch failed",
+    "latency": 821,
+    "score": 1
+  }
+]

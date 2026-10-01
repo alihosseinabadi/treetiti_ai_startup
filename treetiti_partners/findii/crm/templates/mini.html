@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FindII Mini App</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #111); padding: 12px 12px 40px; }
+h1 { font-size: 20px; margin: 8px 0 2px; }
+.sub { font-size: 13px; opacity: .65; margin-bottom: 12px; }
+.stats { display: flex; gap: 8px; margin-bottom: 12px; }
+.stat { flex: 1; background: var(--tg-theme-secondary-bg-color, #f1f1f1); border-radius: 10px; padding: 8px; text-align: center; }
+.stat b { font-size: 18px; display: block; }
+.stat span { font-size: 11px; opacity: .7; }
+input[type=search] { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; margin-bottom: 10px; font-size: 15px; background: var(--tg-theme-bg-color, #fff); color: inherit; }
+.card { background: var(--tg-theme-secondary-bg-color, #f4f4f4); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.score { font-weight: 700; font-size: 15px; }
+.addr { font-size: 13px; opacity: .75; }
+.detail { font-size: 13px; margin-top: 6px; display: none; }
+.detail.open { display: block; }
+.btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.btns button { flex: 1; min-width: 70px; padding: 8px 4px; border: 0; border-radius: 8px; font-size: 13px; background: var(--tg-theme-button-color, #2481cc); color: var(--tg-theme-button-text-color, #fff); }
+.btns button.ghost { background: transparent; border: 1px solid #999; color: inherit; }
+.err { background: #fdd; color: #900; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; }
+.geo-ok { color: #0a0; } .geo-mid { color: #a80; }
+</style>
+</head>
+<body>
+<h1>🤖 FindII leads</h1>
+<div class="sub" id="hello">loading…</div>
+<div class="stats" id="stats"></div>
+<input type="search" id="q" placeholder="🔍 search city, street, text…">
+<div id="list"></div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+const INIT = tg ? tg.initData : "";
+const HEADERS = { "X-Telegram-InitData": INIT };
+
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({ headers: HEADERS }, opts || {}));
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function emoji(s) { return s >= 80 ? "🔥" : s >= 60 ? "✅" : "📋"; }
+
+async function boot() {
+  try {
+    const init = await api("/mini/api/init");
+    document.getElementById("hello").textContent =
+      "hi " + (init.user_name || "there") + " · map: " + (init.map_city || "not set");
+    const st = init.stats || {};
+    document.getElementById("stats").innerHTML =
+      stat(st.total, "leads") + stat(st.hot, "hot 🔥") + stat(st.today, "today");
+    await loadLeads("");
+  } catch (e) {
+    document.getElementById("hello").innerHTML = "";
+    document.getElementById("list").innerHTML =
+      '<div class="err">Mini App auth failed (' + esc(e.message) + '). Open this page from the Telegram bot button with a configured bot token.</div>';
+  }
+}
+function stat(v, l) { return '<div class="stat"><b>' + (v == null ? "–" : v) + "</b><span>" + l + "</span></div>"; }
+
+async function loadLeads(q) {
+  const leads = await api("/mini/api/leads?q=" + encodeURIComponent(q));
+  const box = document.getElementById("list");
+  if (!leads.length) { box.innerHTML = '<div class="sub">no leads found</div>'; return; }
+  box.innerHTML = leads.map(l => card(l)).join("");
+}
+function card(l) {
+  const geo = l.geo_status === "Confirmed"
+    ? '<span class="geo-ok">🗺 ' + esc(l.matched_address || "verified") + "</span>"
+    : l.geo_status === "Probable"
+    ? '<span class="geo-mid">🗺 ~' + esc(l.matched_address || "street") + "</span>" : "";
+  return '<div class="card" id="c' + l.id + '">' +
+    '<div class="top"><span class="score">' + emoji(l.score) + " " + l.score + " · " + esc(l.deal_type) + " " + esc(l.property_type) + "</span>" +
+    "<span class='addr'>#" + l.id + " " + esc(l.status) + "</span></div>" +
+    "<div>" + esc(l.city || "—") + (l.district ? ", " + esc(l.district) : "") +
+    (l.price ? " · 💰 " + Number(l.price).toLocaleString() + " " + esc(l.currency || "") : "") + "</div>" +
+    (l.contact ? "<div>📞 <b>" + esc(l.contact) + "</b></div>" : "") +
+    (geo ? "<div>" + geo + "</div>" : "") +
+    '<div class="detail" id="d' + l.id + '">' + esc(l.summary || l.raw_text || "").slice(0, 400) +
+    (l.source_url ? '<br>🔗 <a href="' + esc(l.source_url) + '" target="_blank">listing</a>' : "") +
+    '<div class="btns">' +
+    ["contacted", "qualified", "won", "lost"].map(s =>
+      '<button onclick="mark(' + l.id + ",'" + s + "'" + ')">' + s + "</button>").join("") +
+    "</div></div>" +
+    '<div class="btns"><button class="ghost" onclick="toggle(' + l.id + ')">details</button>' +
+    (l.contact ? '<button class="ghost" onclick="copy(\'' + esc(l.contact).replace(/'/g, "") + "')\">copy phone</button>" : "") +
+    "</div></div>";
+}
+function toggle(id) { document.getElementById("d" + id).classList.toggle("open"); }
+function copy(t) { if (navigator.clipboard) navigator.clipboard.writeText(t); if (tg) tg.showAlert("copied: " + t); }
+async function mark(id, status) {
+  await api("/mini/api/mark", { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, HEADERS), body: JSON.stringify({ id, status }) });
+  if (tg) tg.showToast && tg.showToast("marked " + status);
+  document.querySelector("#c" + id + " .addr").textContent = "#" + id + " " + status;
+}
+let deb = null;
+document.getElementById("q").addEventListener("input", e => {
+  clearTimeout(deb); deb = setTimeout(() => loadLeads(e.target.value).catch(() => {}), 300);
+});
+boot();
+</script>
+</body>
+</html>

@@ -99,10 +99,7 @@ export default function Scene01_Arrival() {
               onClick={openPhone}
               className="relative inline-block text-white cursor-pointer transition-[filter] duration-150"
               style={{
-                fontFamily: "'Caveat', cursive",
-                fontWeight: 600,
-                fontSize: "1.12em",
-                transform: "rotate(-1.5deg)",
+                fontWeight: 700,
                 filter: `brightness(${1 + glow * 0.9}) drop-shadow(0 0 ${glow * 30}px rgba(110,168,255,${glow * 0.85}))`,
               }}
             >
@@ -118,7 +115,7 @@ export default function Scene01_Arrival() {
               )}
             </button>
             <span className="mx-3 align-middle text-[0.6em] font-light text-white/60">×</span>
-            <span className="text-[#6EA8FF] inline-block" style={{ fontFamily: "'Caveat', cursive", fontWeight: 700, fontSize: "1.18em", transform: "rotate(-2deg)" }}>
+            <span className="text-[#6EA8FF] inline-block font-bold">
               Treetiti
             </span>
           </h1>

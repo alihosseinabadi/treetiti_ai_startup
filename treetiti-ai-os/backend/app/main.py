@@ -75,7 +75,8 @@ def create_app() -> FastAPI:
         from fastapi.responses import FileResponse
 
         html = Path(__file__).resolve().parents[2] / "os_dashboard.html"
-        return FileResponse(str(html), media_type="text/html")
+        return FileResponse(str(html), media_type="text/html",
+                            headers={"Cache-Control": "no-store"})
 
     api_prefix = settings.api_prefix
     app.include_router(auth.router, prefix=api_prefix)

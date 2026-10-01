@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-supabase"],
+      "env": {
+        "SUPABASE_URL": "${VITE_SUPABASE_URL}",
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}"
+      }
+    },
+    "whatsapp": {
+      "command": "uv",
+      "args": ["--directory", "./mcp/servers/whatsapp", "run", "server.py"],
+      "env": {
+        "WHATSAPP_API_TOKEN": "${WHATSAPP_API_TOKEN}",
+        "WHATSAPP_PHONE_ID": "${WHATSAPP_PHONE_ID}"
+      }
+    },
+    "telegram": {
+      "command": "uv",
+      "args": ["--directory", "./mcp/servers/telegram", "run", "server.py"],
+      "env": {
+        "TELEGRAM_BOT_TOKEN": "${TELEGRAM_BOT_TOKEN}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./docs", "./public"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "ffmpeg": {
+      "command": "uv",
+      "args": ["--directory", "./mcp/servers/ffmpeg", "run", "server.py"],
+      "env": {}
+    },
+    "comfyui": {
+      "command": "uv",
+      "args": ["--directory", "./mcp/servers/comfyui", "run", "server.py"],
+      "env": {
+        "COMFYUI_URL": "${COMFYUI_URL:-http://localhost:8188}"
+      }
+    }
+  }
+}

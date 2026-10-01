@@ -44,6 +44,7 @@ export default function Footer() {
     { label: (t("footer.columns.0.links", { returnObjects: true }) as string[])[2] ?? "AI Workflow Systems", section: "pipeline" },
     { label: (t("footer.columns.0.links", { returnObjects: true }) as string[])[3] ?? "AI Content Creation", section: "ai-content" },
     { label: (t("footer.columns.0.links", { returnObjects: true }) as string[])[4] ?? "Custom AI Solutions", section: "cta" },
+    { label: (t("footer.columns.0.links", { returnObjects: true }) as string[])[5] ?? "Partner Startups", section: "partners" },
   ];
 
   const platformLinks: { label: string; to: string }[] = [
@@ -82,7 +83,7 @@ export default function Footer() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 mb-16 md:mb-20">
             <div className="md:col-span-4">
               <Link to="/" className="inline-flex items-center gap-3 text-xl font-bold text-white mb-4 group">
-                <BrandLogo className="h-8 w-auto" />
+                <BrandLogo className="h-10 w-auto" />
               </Link>
               <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
                 {t("footer.tagline")}
