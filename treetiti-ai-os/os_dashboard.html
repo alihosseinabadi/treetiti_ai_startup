@@ -129,11 +129,11 @@ header{display:flex;align-items:center;gap:6px;padding:10px 14px}
   <div id="hist"></div>
   <div class="side-foot">
     <div class="toolrow">
+      <button class="tbtn" onclick="openSheet('appr')">Approvals</button>
       <button class="tbtn" onclick="openSheet('sched')">Schedules</button>
       <button class="tbtn" onclick="openSheet('plug')">Plugins</button>
       <button class="tbtn" onclick="openSheet('agents')">Agents</button>
       <button class="tbtn" onclick="openSheet('keys')">Keys</button>
-      <button class="tbtn" onclick="openSheet('appr')">Approvals</button>
     </div>
     <div class="userrow"><span class="avatar">AC</span><span>Alex Chen</span></div>
   </div>
@@ -170,12 +170,12 @@ header{display:flex;align-items:center;gap:6px;padding:10px 14px}
 </main>
 </div>
 <div class="overlay" id="sheet"><div class="sheet">
-<div class="tabs"><button class="tab" id="tab-sched" onclick="showTab('sched')">Schedules</button>
+<div class="tabs"><button class="tab" id="tab-appr" onclick="showTab('appr')">Approvals</button>
+<button class="tab" id="tab-sched" onclick="showTab('sched')">Schedules</button>
 <button class="tab" id="tab-proj" onclick="showTab('proj')">Projects</button>
 <button class="tab" id="tab-plug" onclick="showTab('plug')">Plugins</button>
 <button class="tab" id="tab-agents" onclick="showTab('agents')">Agents</button>
 <button class="tab" id="tab-keys" onclick="showTab('keys')">Keys</button>
-<button class="tab" id="tab-appr" onclick="showTab('appr')">Approvals</button>
 <span style="flex:1"></span><button class="tbtn" onclick="closeSheet()">✕</button></div>
 <div class="sbody" id="sbody"></div></div></div>
 <div id="toast"></div>
