@@ -129,7 +129,6 @@ header{display:flex;align-items:center;gap:6px;padding:10px 14px}
   <div id="hist"></div>
   <div class="side-foot">
     <div class="toolrow">
-      <button class="tbtn" onclick="openSheet('appr')">Approvals</button>
       <button class="tbtn" onclick="openSheet('sched')">Schedules</button>
       <button class="tbtn" onclick="openSheet('plug')">Plugins</button>
       <button class="tbtn" onclick="openSheet('agents')">Agents</button>
@@ -170,8 +169,7 @@ header{display:flex;align-items:center;gap:6px;padding:10px 14px}
 </main>
 </div>
 <div class="overlay" id="sheet"><div class="sheet">
-<div class="tabs"><button class="tab" id="tab-appr" onclick="showTab('appr')">Approvals</button>
-<button class="tab" id="tab-sched" onclick="showTab('sched')">Schedules</button>
+<div class="tabs"><button class="tab" id="tab-sched" onclick="showTab('sched')">Schedules</button>
 <button class="tab" id="tab-proj" onclick="showTab('proj')">Projects</button>
 <button class="tab" id="tab-plug" onclick="showTab('plug')">Plugins</button>
 <button class="tab" id="tab-agents" onclick="showTab('agents')">Agents</button>
@@ -376,9 +374,9 @@ async function newProject(){const n=prompt('Project name:');if(!n||!n.trim())ret
 async function delProj(id){if(!confirm('Delete project?'))return;await api('/projects/'+id,null,'DELETE');await loadProjects();showTab('proj');}
 function openSheet(tab){document.getElementById('sheet').style.display='grid';showTab(tab);}
 function closeSheet(){document.getElementById('sheet').style.display='none';}
-async function showTab(t){['sched','proj','plug','keys','agents','appr'].forEach(k=>document.getElementById('tab-'+k).classList.toggle('on',k===t));
+async function showTab(t){['sched','proj','plug','keys','agents'].forEach(k=>document.getElementById('tab-'+k).classList.toggle('on',k===t));
   const b=document.getElementById('sbody');b.innerHTML='Loading…';
-  try{if(t==='sched')await renderSched(b);else if(t==='proj')await renderProjTab(b);else if(t==='keys')await renderKeys(b);else if(t==='agents')await renderAgents(b);else if(t==='appr')await renderAppr(b);else await renderPlug(b);}catch(e){b.innerHTML='Failed: '+esc(e.message);}}
+  try{if(t==='sched')await renderSched(b);else if(t==='proj')await renderProjTab(b);else if(t==='keys')await renderKeys(b);else if(t==='agents')await renderAgents(b);else await renderPlug(b);}catch(e){b.innerHTML='Failed: '+esc(e.message);}}
 async function renderSched(b){const jobs=await api('/agents/schedule');
   let h='<div style="color:#8e8e8e;margin-bottom:6px">Agents run automatically on these schedules.</div>';
   jobs.forEach(j=>{h+='<div class="jrow"><span>'+(j.enabled?'🟢':'⚪')+'</span><span style="flex:1"><b>'+esc(j.agent)+'</b> <small>'+esc(j.job_type)+' '+(j.job_type==='daily'?'@ '+esc(j.schedule_time||''):'every '+j.interval_minutes+'m')+'</small><br><small>last: '+(j.last_run_at||'never')+'</small></span>'
@@ -406,14 +404,6 @@ async function renderPlug(b){const plugs=((await api('/connectors')).connectors|
   b.innerHTML=h;}
 async function testConn(id){try{const r=await api('/connectors/'+id+'/test',{});toast('OK: '+JSON.stringify(r.connector||r).slice(0,120));}
   catch(e){toast('Failed: '+e.message);}showTab('plug');}
-async function renderAppr(b){const list=await api('/approvals?status=pending');
-  let h='<div style="color:#8e8e8e;margin-bottom:6px">Human gate — approving runs the action (e.g. publish). Nothing executes without you.</div>';
-  if(!list.length)h+='<div class="jrow"><span style="flex:1">All clear — nothing pending.</span></div>';
-  list.forEach(a=>{h+='<div class="jrow"><span style="flex:1"><b>'+esc(a.title||a.kind)+'</b> <small>'+esc(a.kind)+' • by '+esc(a.requested_by||'?')+' • '+esc((a.created_at||'').slice(0,16).replace('T',' '))+'</small><br><small>'+esc(a.summary||'')+'</small></span>'
-  +'<button class="tbtn go" onclick="decideAppr(\''+a.id+'\',\'approve\')">Approve</button>'
-  +'<button class="tbtn" onclick="decideAppr(\''+a.id+'\',\'reject\')">Reject</button></div>';});
-  b.innerHTML=h;}
-async function decideAppr(id,decision){try{await api('/approvals/'+id+'/decide',{decision:decision,note:''});toast(decision==='approve'?'Approved — action running':'Rejected');}catch(e){toast('Failed: '+e.message);}showTab('appr');}
 async function renderAgents(b){
   let agents=[];try{agents=await api('/agents');}catch{agents=[];}
   let h='<div style="color:#8e8e8e;margin-bottom:10px">'+agents.length+' specialists on the team. Click one to brief it.</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
