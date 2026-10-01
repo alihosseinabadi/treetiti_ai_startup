@@ -9,10 +9,12 @@ from app import webhook_security
 
 class _LockedSettings:
     webhook_shared_secret = "s3cret-value"
+    is_prod = False
 
 
 class _OpenSettings:
     webhook_shared_secret = ""
+    is_prod = False
 
 
 @pytest.fixture

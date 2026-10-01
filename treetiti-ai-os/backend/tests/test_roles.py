@@ -71,13 +71,17 @@ def test_agents_schedule_create_endpoint_is_role_gated():
 
 
 def test_agents_list_remains_auth_only():
-    """Listing agents should stay available to every authenticated role."""
+    """Listing agents requires an authenticated viewer-or-higher role.
+
+    Phase 0.1: every router enforces require_role; reads admit the
+    viewer trio, mutations the editor duo.
+    """
     import inspect
 
     import app.routers.agents as mod
 
     sig = inspect.signature(mod.list_agents)
     as_str = sig.parameters["user"].annotation.__repr__()
-    assert "require_role" not in as_str
-    assert "get_current_user" in as_str
+    assert "require_role" in as_str
+    assert "viewer" in as_str
 
