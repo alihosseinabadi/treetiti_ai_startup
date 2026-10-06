@@ -236,6 +236,16 @@ def provider_specs() -> dict[str, ProviderSpec]:
             enabled=True,
             notes="Free community tier, OpenAI-compatible.",
         ),
+        "muse": ProviderSpec(
+            prefix="muse",
+            name="MuseWork Desktop (MuBear)",
+            capabilities=_cap({"capabilities": [CAP_LLM]}),
+            cost_tier="free",
+            key_field="",
+            base_url="http://127.0.0.1:6300",
+            enabled=True,
+            notes="Local desktop Muse app over loopback; the OS spawns `muse serve` itself.",
+        ),
         "ollama": ProviderSpec(
             prefix="ollama",
             name="Ollama (local)",

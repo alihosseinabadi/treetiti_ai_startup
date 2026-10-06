@@ -44,6 +44,7 @@ _PROVIDER_TIERS = {
     "requesty": COST_PAID,
     "omnirouter": COST_FREE,
     "pollinations": COST_FREE,
+    "muse": COST_FREE,
     "openrouter": COST_PAID,  # `:free` variants override this below
 }
 

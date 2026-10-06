@@ -51,6 +51,25 @@ def _ip(request: Request) -> str:
 def login(payload: LoginRequest, request: Request,
           db: Annotated[Session, Depends(get_db)]) -> TokenResponse:
     check_rate_limit("auth-login", _ip(request), 30)
+    settings = get_settings()
+    # Dev/demo passwordless: identifier in, admin token out. Only when
+    # AUTH_PASSWORDLESS=true (never in production).
+    if settings.auth_passwordless and payload.email.strip() == settings.auth_passwordless_login:
+        import secrets as _secrets
+
+        email = settings.admin_email
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            user = User(email=email, password_hash=hash_password(_secrets.token_hex(32)),
+                        role="admin")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        audit_log("auth.login", actor=user.email, result="success",
+                  ip=_ip(request), reason="passwordless-dev")
+        return TokenResponse(
+            access_token=create_access_token(user.email, user.role), role=user.role
+        )
     user = db.query(User).filter(User.email == payload.email).first()
     if user is None or not verify_password(payload.password, user.password_hash):
         audit_log("auth.login", actor=payload.email, result="failure",

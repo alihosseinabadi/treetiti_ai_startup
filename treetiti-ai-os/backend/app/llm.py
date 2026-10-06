@@ -440,6 +440,24 @@ def _dispatch_provider(
     handled by the opencode path.
     """
     prefix, _, rest = model.partition("/")
+    if prefix == "muse":
+        # Local MuseWork desktop app (MuBear) over loopback JSON-RPC.
+        # Model part selects the Muse model key, e.g. muse/deepseek-v4-flash.
+        from app import muse_link as _muse_link
+
+        settings = get_settings()
+        try:
+            out = _muse_link.muse_chat(
+                (system + "\n\n" + prompt) if system else prompt,
+                model_key=rest or getattr(settings, "muse_model", "deepseek-v4-flash"),
+                agent_id=getattr(settings, "muse_agent_id", "11894705279991957"),
+                timeout=timeout,
+            )
+            _mark_success(model)
+            return out
+        except Exception:
+            _mark_failure(model)
+            raise
     if prefix not in _PROVIDER_ENDPOINTS:
         # The keyless opencode CLI is a valid chain member too — but it only
         # understands its own model ids (opencode/...). Treat it like a provider

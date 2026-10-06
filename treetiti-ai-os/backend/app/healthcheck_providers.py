@@ -35,6 +35,7 @@ def main() -> None:
         ("requesty/openai/gpt-4o-mini", settings.requesty_key, "Requesty router"),
         ("omnirouter/auto", settings.omnirouter_key, "OmniRoute gateway"),
         ("pollinations/openai", settings.pollinations_key, "Pollinations free"),
+        ("muse/deepseek-v4-flash", "local", "MuseWork desktop MuBear"),
     ]
     print(f"{'MODEL':<60} {'STATUS':<12} {'LATENCY':<10} NOTE")
     print("-" * 110)

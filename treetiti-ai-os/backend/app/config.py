@@ -248,6 +248,10 @@ class Settings(BaseSettings):
         default="", validation_alias=AliasChoices("pollinations_key", "pollinations_api_key")
     )
     pollinations_model: str = "openai"
+    # Local MuseWork desktop app (MuBear) — loopback JSON-RPC, no key.
+    # The OS spawns `muse serve` itself when needed and chats through it.
+    muse_model: str = "deepseek-v4-flash"
+    muse_agent_id: str = "11894705279991957"
     # Per-key daily rate limits (requests) from the design doc. When a provider
     # key is exhausted the client fails over instead of erroring.
     rate_limit_openrouter_daily: int = 50
@@ -271,6 +275,11 @@ class Settings(BaseSettings):
     # --- Auth ---
     # Passwordless mode was removed (Phase 0.3): every login requires a
     # real password verified against the users table.
+    # Dev/demo exception: when AUTH_PASSWORDLESS=true, the single identifier
+    # in AUTH_PASSWORDLESS_LOGIN logs in as admin with no password.
+    # NEVER enable in production.
+    auth_passwordless: bool = False
+    auth_passwordless_login: str = "aalleeiiii"
     admin_email: str = "admin@treetiti.com"
     admin_password: str = "change-me-in-prod"
     # Single-use first-run setup token. Generate with:
