@@ -25,3 +25,9 @@ htmlcov/
 
 # n8n local data
 .n8n/
+
+# Local DB transients / boot logs
+*.db
+*.db-shm
+*.db-wal
+*.err
